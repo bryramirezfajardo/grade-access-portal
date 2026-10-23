@@ -298,52 +298,56 @@
             renderBreakdown();
         }
 
-        // DIREKTANG PAGBASA NG DATA MULA SA E-CLASS RECORD (WALANG RE-COMPUTATION)
+        // Column mapping ayon sa aktuwal na class record (A hanggang AA).
+        // Array index ay zero-based: A=0, B=1, C=2, ... AA=26.
         function parseRowToGrades(row) {
-            if (!row || !Array.isArray(row)) return null;
+            if (!row || !Array.isArray(row) || row.length < 27) return null;
 
             const getNum = (idx) => {
-                let v = row[idx];
-                return (v !== undefined && v !== "" && v !== null && !isNaN(v)) ? Number(v) : 0;
+                const v = row[idx];
+                if (v === undefined || v === null || String(v).trim() === "") return 0;
+                const n = Number(String(v).replace(/,/g, "").trim());
+                return Number.isFinite(n) ? n : 0;
             };
 
             const getFormatted = (idx) => {
-                let v = row[idx];
-                if (v === undefined || v === "" || v === null || isNaN(v)) return "0.00";
-                return Number(v).toFixed(2);
+                const v = row[idx];
+                if (v === undefined || v === null || String(v).trim() === "") return "0.00";
+                const n = Number(String(v).replace(/,/g, "").trim());
+                return Number.isFinite(n) ? n.toFixed(2) : "0.00";
             };
 
             return {
                 subject: "Araling Panlipunan",
                 ww: {
                     max: [20, 20, 25],
-                    scores: [getNum(2), getNum(3), getNum(4)], // Col C, D, E (14, 7, 18)
-                    totalRaw: getNum(5),                       // Col F (39)
+                    scores: [getNum(2), getNum(3), getNum(4)], // C, D, E
+                    totalRaw: getNum(7),                       // H
                     totalMax: 65,
-                    ps: getFormatted(6),                       // Col G (60.00)
-                    ws: getFormatted(7),                       // Col H (12.00)
+                    ps: getFormatted(8),                       // I
+                    ws: getFormatted(9),                       // J
                     weightPct: 20
                 },
                 pt: {
                     max: [20, 10, 50],
-                    scores: [getNum(8), getNum(9), getNum(10)], // Col I, J, K (18, 8, 50)
-                    totalRaw: getNum(11),                       // Col L (76)
+                    scores: [getNum(10), getNum(11), getNum(12)], // K, L, M
+                    totalRaw: getNum(13),                         // N
                     totalMax: 80,
-                    ps: getFormatted(12),                       // Col M (95.00)
-                    ws: getFormatted(13),                       // Col N (47.50)
+                    ps: getFormatted(14),                         // O
+                    ws: getFormatted(15),                         // P
                     weightPct: 50
                 },
                 st: {
-                    st1: { score: getNum(14), max: 25 },        // Col O (10)
-                    st2: { score: getNum(15), max: 25 },        // Col P (18)
-                    te:  { score: getNum(16), max: 50 },        // Col Q (17)
-                    totalScoreSum: getNum(20),                  // Col U (47)
-                    ps: getFormatted(21),                       // Col V (47.20)
-                    ws: getFormatted(22),                       // Col W (14.16)
+                    st1: { score: getNum(16), max: 25 },       // Q
+                    st2: { score: getNum(17), max: 25 },       // R
+                    te:  { score: getNum(18), max: 50 },       // S
+                    totalScoreSum: getNum(22),                 // W
+                    ps: getFormatted(23),                      // X
+                    ws: getFormatted(24),                      // Y
                     weightPct: 30
                 },
-                initialGrade: getFormatted(23),                 // Col X (73.66)
-                termGrade: Math.round(getNum(24)) || 78         // Col Y (78)
+                initialGrade: getFormatted(25),                // Z
+                termGrade: getNum(26)                          // AA
             };
         }
 
