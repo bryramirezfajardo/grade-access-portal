@@ -282,6 +282,8 @@
                 });
                 const data = await res.json();
 
+                console.log("=== RAW FETCH RESPONSE ===", data);
+
                 if (data.success && data.scoresData) {
                     if (!currentStudent.grades) currentStudent.grades = {};
                     currentStudent.grades[term] = parseRowToGrades(data.scoresData);
@@ -298,53 +300,86 @@
             renderBreakdown();
         }
 
-        // PERPEKTONG MAPPING MULA SA E-CLASS RECORD SHEET
+        // DYNAMIC AT MATATAG NA PARSER PARA SA E-CLASS RECORD
         function parseRowToGrades(row) {
             if (!row || !Array.isArray(row)) return null;
+
+            console.log("=== RAW STUDENT ROW ===", row);
 
             const getNum = (idx) => {
                 let v = row[idx];
                 return (v !== undefined && v !== "" && v !== null && !isNaN(v)) ? Number(v) : 0;
             };
 
-            const getFormattedNum = (idx, decimals = 2) => {
-                let v = row[idx];
-                if (v === undefined || v === "" || v === null || isNaN(v)) return "0.00";
-                return Number(v).toFixed(decimals);
-            };
+            // Raw scores mula sa E-Class Record
+            const ww1 = getNum(2);
+            const ww2 = getNum(3);
+            const ww3 = getNum(4);
+            const wwTotalRaw = ww1 + ww2 + ww3;
+            const wwTotalMax = 65; // 20 + 20 + 25
+            const wwPS = (wwTotalRaw / wwTotalMax) * 100;
+            const wwWS = wwPS * 0.20;
+
+            const pt1 = getNum(8);
+            const pt2 = getNum(9);
+            const pt3 = getNum(10);
+            const ptTotalRaw = pt1 + pt2 + pt3;
+            const ptTotalMax = 80; // 20 + 10 + 50
+            const ptPS = (ptTotalRaw / ptTotalMax) * 100;
+            const ptWS = ptPS * 0.50;
+
+            const st1 = getNum(14);
+            const st2 = getNum(15);
+            const te  = getNum(16);
+            
+            // Computations para sa Summative Tests
+            const st1WS = (st1 / 25) * 30;
+            const st2WS = (st2 / 25) * 30;
+            const teWS  = (te / 50) * 40;
+            const stTotalScoreSum = st1 + st2 + te;
+            const stPS = stTotalScoreSum;
+            const stWS = (st1WS + st2WS + teWS) * 0.30;
+
+            const initialGrade = wwWS + ptWS + stWS;
+            const termGrade = transmutateGrade(initialGrade);
 
             return {
                 subject: "Araling Panlipunan",
                 ww: {
                     max: [20, 20, 25],
-                    scores: [getNum(2), getNum(3), getNum(4)], // Col C, D, E
-                    totalRaw: getNum(5),                       // Col F (39)
-                    totalMax: 65,
-                    ps: getFormattedNum(6),                    // Col G (60.00)
-                    ws: getFormattedNum(7),                    // Col H (12.00)
+                    scores: [ww1, ww2, ww3],
+                    totalRaw: wwTotalRaw,
+                    totalMax: wwTotalMax,
+                    ps: wwPS.toFixed(2),
+                    ws: wwWS.toFixed(2),
                     weightPct: 20
                 },
                 pt: {
                     max: [20, 10, 50],
-                    scores: [getNum(8), getNum(9), getNum(10)], // Col I, J, K (18, 8, 50)
-                    totalRaw: getNum(11),                       // Col L (76)
-                    totalMax: 80,
-                    ps: getFormattedNum(12),                    // Col M (95.00)
-                    ws: getFormattedNum(13),                    // Col N (47.50)
+                    scores: [pt1, pt2, pt3],
+                    totalRaw: ptTotalRaw,
+                    totalMax: ptTotalMax,
+                    ps: ptPS.toFixed(2),
+                    ws: ptWS.toFixed(2),
                     weightPct: 50
                 },
                 st: {
-                    st1: { score: getNum(14), max: 25 },        // Col O (10)
-                    st2: { score: getNum(15), max: 25 },        // Col P (18)
-                    te:  { score: getNum(16), max: 50 },        // Col Q (17)
-                    totalScoreSum: getNum(20),                  // Col U (47)
-                    ps: getFormattedNum(21),                    // Col V (47.20)
-                    ws: getFormattedNum(22),                    // Col W (14.16)
+                    st1: { score: st1, max: 25 },
+                    st2: { score: st2, max: 25 },
+                    te:  { score: te, max: 50 },
+                    totalScoreSum: stTotalScoreSum,
+                    ps: stPS.toFixed(2),
+                    ws: stWS.toFixed(2),
                     weightPct: 30
                 },
-                initialGrade: getFormattedNum(23),              // Col X (73.66)
-                termGrade: Math.round(getNum(24)) || 78         // Col Y (78)
+                initialGrade: initialGrade.toFixed(2),
+                termGrade: Math.round(termGrade)
             };
+        }
+
+        function transmutateGrade(initial) {
+            if (initial <= 0) return 60;
+            return (initial * 0.6) + 40; 
         }
 
         function logout() {
