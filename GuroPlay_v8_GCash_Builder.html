@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GuroPlay - Interactive Class Games & Leaderboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .game-card { transition: all 0.2s ease-in-out; }
+    .game-card:hover { transform: translateY(-4px); }
+    .perspective { perspective: 1000px; }
+    .preserve-3d { transform-style: preserve-3d; transition: transform 0.6s; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+
+    /* GuroPlay chat-style interactive quiz (scoped to the game modal) */
+    .gpq-wrap{width:100%;max-width:900px;margin:0 auto;color:#20163b;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    .gpq-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .gpq-eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#813cf4;font-weight:850}
+    .gpq-count{font-size:11px;color:#746a86;font-weight:700;white-space:nowrap}
+    .gpq-progress{height:6px;background:#eee4fb;border-radius:99px;overflow:hidden;margin-bottom:18px}
+    .gpq-progress-fill{height:100%;background:linear-gradient(90deg,#a56aff,#7736ed);transition:width .2s}
+    .gpq-chat{display:flex;flex-direction:column;gap:10px;min-height:220px}
+    .gpq-bubble{max-width:min(470px,90%);padding:12px 15px;border:1px solid #eee4fb;background:#fff;border-radius:18px;box-shadow:0 6px 18px #38205c0a;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+    .gpq-question{align-self:flex-start;border-bottom-left-radius:6px}
+    .gpq-options{align-self:flex-start;margin-top:-4px;padding:9px 15px;min-width:140px;border-bottom-left-radius:6px}
+    .gpq-options ol{list-style:decimal;margin:0;padding-left:22px}.gpq-options li{display:list-item;padding:1px 0}
+    .gpq-answer{align-self:flex-end;background:linear-gradient(135deg,#9958ff,#7835ec);color:white;border-color:transparent;border-bottom-right-radius:6px;max-width:80%}
+    .gpq-feedback{align-self:flex-start;padding:9px 14px;min-width:55px;text-align:center;font-size:20px;border-bottom-left-radius:6px}
+    .gpq-good{color:#138a55}.gpq-bad{color:#c43c52}.gpq-note{align-self:flex-start;color:#746a86;font-size:11px;margin-top:-6px;max-width:95%}
+    .gpq-controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px auto 0}
+    .gpq-num{width:50px;height:52px;border:0;border-radius:14px;background:linear-gradient(145deg,#9b5bff,#7835eb);color:#fff;font-size:22px;font-weight:850;box-shadow:0 6px 0 #6424ca,0 10px 18px #7c35ed22;cursor:pointer}
+    .gpq-num:disabled{opacity:.45;cursor:not-allowed}.gpq-num.gpq-selected{outline:3px solid #d9c2ff;outline-offset:2px}
+    .gpq-next{background:#fff;color:#813cf4;border:2px solid #e3d2ff;box-shadow:0 6px 0 #d8c4f6}
+    .gpq-footer{text-align:center;color:#746a86;font-size:11px;margin-top:15px}
+    .gpq-result{background:#fff;border:1px solid #eee4fb;border-radius:20px;padding:22px;text-align:center;max-width:440px;margin:15px auto;box-shadow:0 10px 25px #38205c0d}
+    .gpq-score{font-size:38px;font-weight:900;color:#813cf4;margin:5px 0}
+    .gpq-action{border:0;border-radius:10px;background:#813cf4;color:#fff;padding:10px 15px;font-size:12px;font-weight:800;cursor:pointer;margin:5px}
+    .gpq-action.alt{background:#fff;color:#813cf4;border:1px solid #e3d2ff}
+    @media(max-width:520px){.gpq-bubble{font-size:13px;padding:10px 12px}.gpq-num{width:43px;height:45px;font-size:19px}.gpq-controls{gap:8px}}
+
+  </style>
+
+<style>
+@keyframes mysteryPopIn { 0% { transform: scale(.15) rotate(-25deg); opacity:0; } 65% { transform: scale(1.2) rotate(8deg); opacity:1; } 100% { transform:scale(1) rotate(0); opacity:1; } }
+.mystery-pop { animation: mysteryPopIn .65s cubic-bezier(.2,.8,.2,1) both; }
+</style>
+
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+
+  <!-- Navigation Bar -->
+  <nav class="bg-indigo-700 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-gamepad text-yellow-400 text-2xl"></i>
+        <span class="font-bold text-xl tracking-wide">GuroPlay</span>
+        <span class="bg-indigo-800 text-indigo-200 text-xs px-2 py-1 rounded-full font-semibold">15-in-1 Suite</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="openAuthModal()" id="userAccountBtn" class="bg-indigo-800 hover:bg-indigo-900 text-xs px-3 py-1.5 rounded-lg font-semibold flex items-center gap-2">
+          <i class="fa-solid fa-user"></i> <span id="accountLabel">Free Teacher Account</span>
+        </button>
+        <span id="userStatusBadge" class="bg-emerald-500 text-white text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">Free Plan</span>
+        <button id="unlockBtn" onclick="openPaywallModal()" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-4 py-1.5 rounded-lg text-sm shadow transition">
+          <i class="fa-solid fa-crown mr-1"></i> <span id="unlockBtnLabel">Upgrade Plan · ₱100/buwan</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+    <!-- Sidebar -->
+    <div class="lg:col-span-1 space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Menu Dashboard</h2>
+        <div class="space-y-1">
+          <button onclick="switchTab('games')" id="tabBtn-games" class="w-full text-left px-3 py-2 rounded-lg font-semibold text-sm flex items-center justify-between bg-indigo-50 text-indigo-700">
+            <span><i class="fa-solid fa-shapes mr-2"></i>Mga Laro (15)</span>
+            <span id="tabActiveBadge" class="bg-indigo-200 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Active</span>
+          </button>
+          <button onclick="switchTab('leaderboard')" id="tabBtn-leaderboard" class="w-full text-left px-3 py-2 rounded-lg font-semibold text-sm flex items-center justify-between text-slate-600 hover:bg-slate-50">
+            <span><i class="fa-solid fa-trophy mr-2"></i>Leaderboard</span>
+            <span class="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-bold">Top Students</span>
+          </button>
+          <button onclick="switchTab('activities')" id="tabBtn-activities" class="w-full text-left px-3 py-2 rounded-lg font-semibold text-sm flex items-center justify-between text-slate-600 hover:bg-slate-50">
+            <span><i class="fa-solid fa-folder-open mr-2"></i>My Activities</span>
+            <span id="activityCountBadge" class="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Preset na Aralin</h3>
+        <select id="presetSelector" onchange="loadPresetSubject(this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm font-medium outline-none">
+          <option value="ekonomiks">Grade 9: Ekonomiks (Implasyon)</option>
+          <option value="kontemporaryo">Grade 10: Kontemporaryong Isyu</option>
+          <option value="general">General Knowledge</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="lg:col-span-3">
+
+      <!-- SECTION 1: GAMES GRID -->
+      <div id="section-games" class="space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+          <div>
+            <h1 id="currentSubjectTitle" class="text-xl font-bold text-slate-900">Grade 9 Ekonomiks - Implasyon</h1>
+            <p class="text-xs text-slate-500 mt-1" id="questionCountLabel">5 Na katanungan</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-100 text-emerald-800">5 Free Games</span>
+            <span id="proLockedBadge" class="text-xs font-semibold px-2.5 py-1 rounded bg-amber-100 text-amber-800">10 PRO Locked</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="gamesGrid"></div>
+      </div>
+
+      <!-- SECTION 2: LEADERBOARD -->
+      <div id="section-leaderboard" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Class Leaderboard</h2>
+              <p class="text-xs text-slate-500">Pumili ng game category para makita ang hiwalay na ranggo ng mga estudyante.</p>
+            </div>
+            <div class="flex items-center gap-2"><select id="leaderboardGameFilter" onchange="renderLeaderboard()" class="border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold bg-white"><option value="">Pumili ng game category</option></select><button onclick="clearLeaderboard()" class="text-xs text-rose-600 hover:text-rose-800 font-bold"><i class="fa-solid fa-trash mr-1"></i> Reset Board</button></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-100 text-slate-600 font-bold text-xs uppercase">
+                <tr>
+                  <th class="p-3">Rank</th>
+                  <th class="p-3">Pangalan ng Estudyante</th>
+                  <th class="p-3">Seksyon / Baitang</th>
+                  <th class="p-3">Game Category</th>
+                  <th class="p-3">Puntos</th>
+                  <th class="p-3">Oras (Speed)</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+            <!-- SECTION 3: MY ACTIVITIES -->
+      <div id="section-activities" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-folder-open text-indigo-500 mr-2"></i>My Activities</h2>
+              <p class="text-xs text-slate-500">Mga interactive activity na ginawa mo dati. Piliin ang Laruin para magamit sa mga laro.</p>
+            </div>
+            <button onclick="newActivity()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-sm shadow"><i class="fa-solid fa-plus mr-1"></i> Gumawa ng Bagong Activity</button>
+          </div>
+          <div id="activitiesList" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- SECTION 3B: GAME TEMPLATES -->
+      <div id="section-templates" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-4">
+            <div>
+              <button onclick="cancelTemplatePick()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold mb-1">← Bumalik</button>
+              <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-shapes text-indigo-500 mr-2"></i>Pumili ng Game Template</h2>
+              <p class="text-xs text-slate-500">Piliin ang uri ng laro para sa bago mong activity.</p>
+            </div>
+          </div>
+          <div id="templatesBanner"></div>
+          <div id="templatesGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: CUSTOM BUILDER -->
+      <div id="section-builder" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div class="flex justify-between items-center border-b pb-4">
+            <div><button onclick="switchTab('activities')" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold mb-1">← Bumalik sa My Activities</button><h2 class="text-lg font-bold text-slate-800">Activity Builder</h2></div>
+            <button onclick="saveCustomQuestions()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-sm shadow">Save & Apply</button>
+          </div>
+          <div id="builderTemplateBar"></div>
+          <input id="builderTitle" type="text" placeholder="Pamagat ng Activity (hal. Ekonomiks Quiz 1)" class="w-full border p-2 rounded-lg text-sm font-semibold" value="">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs">
+            <label class="font-bold text-slate-600">Default na puntos<input id="setPoints" type="number" min="1" max="1000" value="10" class="mt-1 w-full border rounded p-1.5 font-semibold"></label>
+            <label class="font-bold text-slate-600">Time limit (segundo)<input id="setTime" type="number" min="0" max="3600" value="0" class="mt-1 w-full border rounded p-1.5 font-semibold" title="0 = walang limit"></label>
+            <label class="font-bold text-slate-600">Kategorya / Paksa<input id="setCategory" type="text" placeholder="hal. Ekonomiks" class="mt-1 w-full border rounded p-1.5 font-semibold"></label>
+            <label class="font-bold text-slate-600">Hirap (Difficulty)<select id="setDifficulty" class="mt-1 w-full border rounded p-1.5 font-semibold"><option value="easy">Madali</option><option value="medium" selected>Katamtaman</option><option value="hard">Mahirap</option></select></label>
+            <label class="col-span-2 sm:col-span-4 flex items-center gap-2 font-bold text-slate-600"><input id="setShuffle" type="checkbox" class="w-4 h-4"> Haluin ang pagkakasunod-sunod ng mga tanong tuwing lalaruin</label>
+          </div>
+          <div class="space-y-3" id="builderQuestionsContainer"></div>
+          <button onclick="addBuilderQuestion()" class="text-xs bg-indigo-50 text-indigo-600 font-bold px-3 py-1.5 rounded-lg">+ Magdagdag ng Tanong</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- GAME MODAL -->
+  <div id="gameModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+        <h3 id="modalGameTitle" class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-gamepad"></i> Game Play</h3>
+        <button onclick="closeGameModal()" class="text-indigo-200 hover:text-white text-xl font-bold"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="modalGameBody" class="p-6 overflow-y-auto flex-1 min-h-[350px] flex flex-col justify-center items-center"></div>
+    </div>
+  </div>
+
+  <!-- UPGRADE PLAN MODAL (GCash) -->
+  <div id="paywallModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto relative">
+      <button onclick="closePaywallModal()" class="absolute top-4 right-4 text-white/80 hover:text-white text-lg z-10"><i class="fa-solid fa-xmark"></i></button>
+      <div class="bg-gradient-to-br from-indigo-700 to-violet-700 text-white p-6 text-center rounded-t-2xl">
+        <div class="w-14 h-14 bg-amber-400 text-indigo-950 rounded-full flex items-center justify-center text-2xl mx-auto shadow"><i class="fa-solid fa-crown"></i></div>
+        <h3 class="text-xl font-extrabold mt-3">Upgrade Plan: GuroPlay PRO</h3>
+        <p class="mt-2"><span class="text-4xl font-black" id="planPriceLabel">₱100</span><span class="text-indigo-200 font-semibold"> / buwan</span></p>
+        <p id="planStatusLine" class="text-xs text-indigo-200 mt-1"></p>
+      </div>
+      <div class="p-5 space-y-4 text-sm">
+        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs font-semibold text-slate-700">
+          <li>✅ Lahat ng 15 laro (10 PRO games)</li><li>✅ Walang limitasyong activities</li>
+          <li>✅ Puntos, hint at dagdag na sagot</li><li>✅ Leaderboard bawat laro</li>
+        </ul>
+        <div class="rounded-xl border-2 border-sky-200 bg-sky-50 p-4 space-y-3">
+          <p class="font-extrabold text-sky-800 text-xs tracking-wide">HAKBANG 1 · MAGBAYAD GAMIT ANG GCASH</p>
+          <div id="gcashQrBox" class="hidden text-center"><img id="gcashQrImg" alt="GCash QR" class="mx-auto w-44 h-44 object-contain rounded-lg border bg-white"></div>
+          <div class="flex items-center justify-between gap-2 bg-white rounded-lg border px-3 py-2">
+            <div><div class="text-[10px] font-bold text-slate-400">GCASH NUMBER</div><div id="gcashNumLabel" class="font-black text-lg tracking-wider text-sky-700"></div><div id="gcashNameLabel" class="text-xs text-slate-500 font-semibold"></div></div>
+            <button onclick="copyGcashNumber()" id="gcashCopyBtn" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>Kopyahin</button>
+          </div>
+          <p class="text-xs text-slate-600">Buksan ang GCash app → <b>Send Money</b> → ilagay ang numero sa itaas → halagang <b id="planPriceInline">₱100</b>. Itago ang <b>Reference No.</b> ng transaksyon.</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 p-4 space-y-2">
+          <p class="font-extrabold text-slate-700 text-xs tracking-wide">HAKBANG 2 · IPADALA ANG PATUNAY NG BAYAD</p>
+          <input id="payName" type="text" placeholder="Buong pangalan mo" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm outline-none">
+          <input id="payContact" type="text" placeholder="Email o mobile number (para sa license key)" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm outline-none">
+          <input id="payRef" type="text" inputmode="numeric" placeholder="GCash Reference No. (13 digits)" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm outline-none font-mono">
+          <button onclick="submitPaymentRequest()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-lg text-sm shadow"><i class="fa-solid fa-paper-plane mr-1"></i> Ipadala ang Payment Details</button>
+          <p id="payMsg" class="text-xs font-semibold" aria-live="polite"></p>
+          <div id="payPending" class="hidden rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900"></div>
+        </div>
+        <div class="rounded-xl border border-slate-200 p-4 space-y-2">
+          <p class="font-extrabold text-slate-700 text-xs tracking-wide">HAKBANG 3 · I-ACTIVATE ANG LICENSE KEY</p>
+          <p class="text-xs text-slate-500">Ibibigay ang key pagkatapos ma-verify ang bayad mo. Tatagal ang PRO nang <b>30 araw</b> mula sa activation.</p>
+          <input type="text" id="licenseKeyInput" placeholder="I-type ang Key (e.g. TEACHER2026)" class="w-full border border-slate-300 px-3 py-2 rounded-lg text-sm outline-none uppercase font-mono">
+          <button onclick="activateLicenseKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm shadow">Unlock PRO Plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH / ACCOUNT MODAL -->
+  <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 text-center relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      <h3 class="text-lg font-bold text-slate-800">Teacher Login & Sign Up</h3>
+      <input type="email" id="teacherEmail" placeholder="DepEd / Personal Email" class="w-full border p-2 rounded-lg text-sm outline-none">
+      <input type="password" placeholder="Password" class="w-full border p-2 rounded-lg text-sm outline-none">
+      <button onclick="loginTeacher()" class="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-sm shadow">Log In / Sign Up</button>
+    </div>
+  </div>
+
+  <script>
+    if (typeof confetti === 'undefined') { window.confetti = function(){}; }
+    function toGameLetters(s){return String(s||'').toLocaleUpperCase().replace(/Ñ/g,'\u0001').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\u0001/g,'Ñ').replace(/[^A-ZÑ ]/g,'').replace(/\s+/g,' ').trim();}
+    function getMaxScore(){ if(currentGameId==='mole')return null; if(currentGameId==='match')return matchPairs.length; if(currentGameId==='wordsearch'&&wordSearchState)return wordSearchState.words.length; if(currentGameId==='jeopardy')return currentQuestions.reduce((t,_,i)=>t+jepPts(i),0); return currentQuestions.length; }
+    function lbCompare(a,b){ const pa=(a.maxScore&&a.gameId!=='mole')?a.score/a.maxScore:a.score, pb=(b.maxScore&&b.gameId!=='mole')?b.score/b.maxScore:b.score; return pb-pa||b.score-a.score||a.time-b.time; }
+    let currentSettings = { points: 10, time: 0, category: '', difficulty: 'medium', shuffle: false };
+    function qPts(item){ return Number(item && item.pts) || Number(currentSettings.points) || 10; }
+    function awardPts(item, factor){ gameSession.points = (gameSession.points || 0) + Math.round(qPts(item) * (factor == null ? 1 : factor)); }
+    function ansOK(typed, item){ const t = normalizeProAnswer(typed); if(!t) return false; return [item.a, ...(item.alts || [])].some(x => normalizeProAnswer(x) === t); }
+    function shuffleCopy(arr){ const a = arr.map(x => ({...x})); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+    // ===== UPGRADE PLAN / GCASH CONFIG — PALITAN ANG MGA HALAGANG ITO =====
+    const PLAN = {
+      name: 'GuroPlay PRO',
+      price: 100,                       // piso kada buwan
+      days: 30,                         // haba ng subscription
+      gcashNumber: '09XX XXX XXXX',     // <-- ILAGAY ANG GCASH NUMBER MO DITO
+      gcashName: 'PANGALAN NG GCASH ACCOUNT',   // <-- ILAGAY ANG PANGALAN SA GCASH
+      qrImage: '',                      // opsyonal: URL o data-URI ng GCash QR code mo
+      contact: '',                      // opsyonal: Messenger/Email/Viber para sa pagpapadala ng proof of payment
+      licenseKeys: ['TEACHER2026']      // mga key na ibibigay mo pagkatapos ma-verify ang bayad
+    };
+    function proExpiry(){ return Number(localStorage.getItem('guroplay_pro_expiry') || 0); }
+    function proActive(){ if (localStorage.getItem('guroplay_pro') !== 'true') return false; const e = proExpiry(); if (e && e < Date.now()) { localStorage.removeItem('guroplay_pro'); return false; } return true; }
+    let isProUser = proActive();
+    let currentQuestions = [];
+    let gameSession = { qIndex: 0, score: 0, startTime: 0 };
+    let currentGameId = 'quiz';
+    let globalGameTimer = null;
+    function formatElapsed(seconds){ const m=Math.floor(seconds/60), sec=seconds%60; return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
+    function startGlobalGameTimer(){ if(globalGameTimer) clearInterval(globalGameTimer); const tick=()=>{const el=document.getElementById('globalGameTimer'); if(el && gameSession?.startTime) el.textContent=formatElapsed(Math.floor((Date.now()-gameSession.startTime)/1000));}; tick(); globalGameTimer=setInterval(tick,1000); }
+    let leaderboardData = JSON.parse(localStorage.getItem('guroplay_leaderboard') || '[]');
+
+    const PRESETS = {
+      ekonomiks: {
+        title: "Grade 9 Ekonomiks - Implasyon",
+        items: [
+          { q: "Patuloy na pagtaas ng pangkalahatang presyo ng bilihin", a: "Implasyon" },
+          { q: "Ahensya na opisyal na naglalabas ng CPI sa bansa", a: "PSA" },
+          { q: "Uri ng implasyon bunga ng pagtaas ng gastusin sa produksyon", a: "Cost-push" },
+          { q: "Sino ang higit na nahihirapan kapag may mataas na implasyon?", a: "May Tiyak na Kita" },
+          { q: "Pangunahing sukatan ng pagbabago sa presyo ng bilihin", a: "CPI" }
+        ]
+      },
+      kontemporaryo: {
+        title: "Grade 10 Kontemporaryong Isyu",
+        items: [
+          { q: "Proseso ng paglipat ng tao mula sa isang pook patungo sa iba", a: "Migrasyon" },
+          { q: "Tawag sa mga Pilipinong manggagawa sa ibayong-dagat", a: "OFW" },
+          { q: "Pangunahing dahilan ng pag-alis ng bansa ng mga mamamayan", a: "Trabaho" }
+        ]
+      },
+      general: {
+        title: "General Knowledge",
+        items: [
+          { q: "Pambansang ibon ng Pilipinas", a: "Agila" },
+          { q: "Pambansang bayani ng Pilipinas", a: "Rizal" },
+          { q: "Pinakamalaking isla sa Pilipinas", a: "Luzon" }
+        ]
+      }
+    };
+
+    const GAMES_LIST = [
+      { id: 'quiz', name: 'Interactive Quiz Engine', icon: 'fa-circle-question', isPro: false, bg: 'bg-blue-500' },
+      { id: 'match', name: 'Match Up (Pairings)', icon: 'fa-object-group', isPro: false, bg: 'bg-emerald-500' },
+      { id: 'flip', name: 'Flip Cards / Flashcards', icon: 'fa-clone', isPro: false, bg: 'bg-amber-500' },
+      { id: 'wheel', name: 'Spin the Wheel', icon: 'fa-dharmachakra', isPro: false, bg: 'bg-purple-500' },
+      { id: 'unscramble', name: 'Unscramble Letters', icon: 'fa-font', isPro: false, bg: 'bg-rose-500' },
+      { id: 'wordsearch', name: 'WordSearch Grid', icon: 'fa-magnifying-glass', isPro: true, bg: 'bg-indigo-600' },
+      { id: 'mole', name: 'Whack-a-Mole Game', icon: 'fa-hammer', isPro: true, bg: 'bg-red-600' },
+      { id: 'box', name: 'Open the Mystery Box', icon: 'fa-box-open', isPro: true, bg: 'bg-orange-600' },
+      { id: 'balloonpop', name: 'Balloon Pop', icon: 'fa-burst', isPro: true, bg: 'bg-fuchsia-600' },
+      { id: 'jeopardy', name: 'Jeopardy Challenge', icon: 'fa-trophy', isPro: true, bg: 'bg-blue-700' },
+      { id: 'millionaire', name: 'Who Wants to Be a Millionaire?', icon: 'fa-gem', isPro: true, bg: 'bg-violet-700' },
+      { id: 'groupsort', name: 'Group Sort Categorizer', icon: 'fa-layer-group', isPro: true, bg: 'bg-violet-600' },
+      { id: 'masteryquest', name: 'Mastery Quest', icon: 'fa-route', isPro: true, bg: 'bg-pink-600' },
+      { id: 'speedtf', name: 'Speed True or False', icon: 'fa-bolt', isPro: true, bg: 'bg-yellow-600' },
+      { id: 'anagram', name: 'Anagram Word Solver', icon: 'fa-font', isPro: true, bg: 'bg-emerald-600' }
+    ];
+
+    window.onload = function() {
+      updateUserStatusUI();
+      loadPresetSubject('ekonomiks');
+      restoreCustomQuiz();
+      renderLeaderboard();
+    };
+
+    function updateUserStatusUI() {
+      if (typeof renderTemplates === 'function') { try { renderTemplates(); } catch (e) {} }
+      if (isProUser) {
+        document.getElementById('userStatusBadge').className = "bg-amber-400 text-indigo-950 text-xs px-3 py-1 rounded-full font-bold uppercase";
+        document.getElementById('userStatusBadge').innerHTML = '<i class="fa-solid fa-crown mr-1"></i> PRO Active';
+        const ub = document.getElementById('unlockBtn'); ub.classList.remove('hidden'); document.getElementById('unlockBtnLabel').textContent = 'Mag-renew · ₱' + PLAN.price; ub.className = 'bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1.5 rounded-lg text-xs border border-white/30 transition';
+        const _e = proExpiry(); if (_e) document.getElementById('userStatusBadge').innerHTML = '<i class="fa-solid fa-crown mr-1"></i> PRO · ' + Math.max(0, Math.ceil((_e - Date.now()) / 86400000)) + ' araw';
+        const pb = document.getElementById('proLockedBadge'); if (pb) { pb.textContent = '10 PRO Unlocked'; pb.className = 'text-xs font-semibold px-2.5 py-1 rounded bg-emerald-100 text-emerald-800'; }
+      }
+    }
+
+    function registerCustomPreset(items, title, activityId) {
+      PRESETS.custom = { title: title || 'Custom Quiz', items, activityId: activityId || null };
+      const sel = document.getElementById('presetSelector');
+      let o = sel.querySelector('option[value="custom"]');
+      if (!o) { o = document.createElement('option'); o.value = 'custom'; sel.appendChild(o); }
+      o.textContent = 'My Activity: ' + (title || 'Custom Quiz');
+    }
+    function restoreCustomQuiz() {
+      loadActivities(); renderActivities();
+      if (activities.length) { const latest = activities[0]; registerCustomPreset(latest.questions, latest.title, latest.id); }
+    }
+    function loadPresetSubject(key) {
+      const preset = PRESETS[key] || PRESETS.ekonomiks;
+      document.getElementById('currentSubjectTitle').innerText = preset.title;
+      currentQuestions = preset.items;
+      currentActivityId = (key === 'custom' && preset.activityId) || null;
+      const _act = currentActivityId && activities.find(x => x.id === currentActivityId);
+      currentSettings = Object.assign({ points: 10, time: 0, category: '', difficulty: 'medium', shuffle: false }, (_act && _act.settings) || {});
+      document.getElementById('questionCountLabel').innerText = `${currentQuestions.length} na katanungan`;
+      renderGamesGrid();
+    }
+
+    function renderGamesGrid() {
+      const grid = document.getElementById('gamesGrid');
+      grid.innerHTML = '';
+      GAMES_LIST.forEach(game => {
+        const locked = game.isPro && !isProUser;
+        grid.innerHTML += `
+          <div class="game-card bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col justify-between relative overflow-hidden">
+            ${game.isPro ? `<span class="absolute top-3 right-3 text-[10px] font-extrabold px-2 py-0.5 rounded text-white ${locked ? 'bg-amber-600' : 'bg-emerald-600'}">${locked ? 'PRO' : 'UNLOCKED'}</span>` : ''}
+            <div>
+              <div class="w-10 h-10 ${game.bg} text-white rounded-lg flex items-center justify-center text-lg mb-3 shadow"><i class="fa-solid ${game.icon}"></i></div>
+              <h3 class="font-bold text-slate-800 text-sm mb-1">${game.name}</h3>
+              <p class="text-xs text-slate-400">${locked ? 'Naka-lock sa Free Plan' : 'Handa nang laruin'}</p>
+            </div>
+            <button onclick="launchGame('${game.id}', ${locked})" class="mt-4 w-full ${locked ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700'} font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1">
+              ${locked ? '<i class="fa-solid fa-lock text-xs"></i> Unlock' : '<i class="fa-solid fa-play text-xs"></i> Laruin'}
+            </button>
+          </div>
+        `;
+      });
+    }
+
+    function launchGame(gameId, isLocked) {
+      if (isLocked) { openPaywallModal(); return; }
+      currentGameId = gameId;
+      document.getElementById('gameModal').classList.remove('hidden');
+      document.getElementById('modalGameTitle').innerHTML = `<i class="fa-solid ${GAMES_LIST.find(g => g.id === gameId).icon}"></i> ${GAMES_LIST.find(g => g.id === gameId).name} <span class="ml-3 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-2 py-1 text-xs font-black">⏱ <span id="globalGameTimer">00:00</span></span>`;
+      trackActivityPlay(gameId);
+      if (currentSettings.shuffle && currentQuestions.length > 1) currentQuestions = shuffleCopy(currentQuestions);
+      gameSession = { qIndex: 0, score: 0, points: 0, startTime: Date.now(), quizAnswers: [], quizChoices: [], hints: {} };
+      startGlobalGameTimer();
+      if (gameId === 'wordsearch') wordSearchState = null;
+      if (['jeopardy','millionaire'].includes(gameId)) { jeopardyState = null; millionaireState = null; }
+      if (gameId === 'balloonpop') { balloonPopState = null; balloonPoints = 0; }
+      if (gameId === 'masteryquest') masteryState = null;
+
+      if (gameId === 'quiz') renderQuizGame();
+      else if (gameId === 'match') renderMatchGame();
+      else if (gameId === 'flip') renderFlipGame();
+      else if (gameId === 'wheel') renderWheelGame();
+      else if (gameId === 'unscramble') renderUnscrambleGame();
+      else renderProGame(gameId);
+    }
+
+
+    // Functional PRO game modes. Each uses the active lesson's question/answer set.
+    let proRoundAnswered = false;
+    function renderProGame(gameId) {
+      const body = document.getElementById('modalGameBody');
+      if (gameId === 'mole') { renderWhackAMole(); return; }
+      if (!currentQuestions.length) { body.innerHTML = '<p class="text-center text-slate-600">Magdagdag muna ng mga tanong sa My Activities.</p>'; return; }
+      if (gameId === 'balloonpop') { renderBalloonPop(); return; }
+      if (gameId === 'jeopardy') { renderJeopardyBoard(); return; }
+      if (gameId === 'millionaire') { renderMillionaireGame(); return; }
+      if (gameId === 'masteryquest') { renderMasteryQuest(); return; }
+      if (gameSession.qIndex >= currentQuestions.length) { showGenericProResult(body); return; }
+      const item = currentQuestions[gameSession.qIndex];
+      proRoundAnswered = false;
+      const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const wrap = (title, intro, content) => `<div class="w-full max-w-xl mx-auto"><div class="text-center mb-4"><p class="text-xs uppercase tracking-widest font-bold text-indigo-500">PRO GAME • ${gameSession.qIndex+1}/${currentQuestions.length}</p><h2 class="text-xl font-extrabold mt-1">${title}</h2><p class="text-sm text-slate-500 mt-2">${intro}</p></div><div class="bg-slate-50 border rounded-2xl p-5">${content}<div id="proFeedback" class="mt-4 text-center font-bold" aria-live="polite"></div><div id="proNextWrap" class="hidden text-center mt-4"><button onclick="nextProQuestion()" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2.5 font-bold">${gameSession.qIndex+1 >= currentQuestions.length ? 'Tingnan ang Resulta' : 'Susunod'}</button></div></div></div>`;
+      const checkButton = `<button onclick="checkProTypedAnswer()" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2.5 font-bold">Suriin ang Sagot</button>`;
+      let html = '';
+      if (gameId === 'wordsearch') {
+        renderWordSearchGame();
+        return;
+      } else if (gameId === 'box') {
+        renderMysteryBoxGame();
+        return;
+      } else if (gameId === 'groupsort') {
+        html = wrap('Group Sort Categorizer','Alin sa dalawang kategorya kabilang ang sagot na ito?',(()=>{const others=currentQuestions.filter(q=>normalizeProAnswer(q.a)!==normalizeProAnswer(item.a));if(!others.length)return '<p class="text-center">Kailangan ng kahit dalawang magkaibang sagot para sa larong ito.</p>';const other=others[Math.floor(Math.random()*others.length)],first=Math.random()>.5,groups=first?[item,other]:[other,item];window._gsCorrect=first?0:1;return `<p class="text-center text-xs font-bold text-slate-500">SAGOT</p><p class="text-center text-2xl font-black mb-4">${safe(item.a)}</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${groups.map((g,k)=>`<button onclick="checkProGroup(${k})" class="border-2 border-indigo-300 bg-indigo-50 hover:bg-indigo-100 rounded-xl p-4 font-bold text-left">${safe(g.q)}</button>`).join('')}</div>`;})());
+      } else if (gameId === 'speedtf') {
+        const truth = Math.random() > .5;
+        const statement = truth ? `${item.q} — ${item.a}` : `${item.q} — ${currentQuestions[(gameSession.qIndex+1)%currentQuestions.length].a}`;
+        window._proTFTruth = truth;
+        html = wrap('Speed True or False','Mabilis na tukuyin kung tama o mali ang pahayag.',`<p class="text-center text-lg font-bold mb-5">${safe(statement)}</p><div class="grid grid-cols-2 gap-3"><button onclick="checkProTF(true)" class="rounded-xl bg-emerald-500 text-white p-4 font-extrabold">TRUE</button><button onclick="checkProTF(false)" class="rounded-xl bg-rose-500 text-white p-4 font-extrabold">FALSE</button></div>`);
+      } else if (gameId === 'anagram') {
+        const chars = String(item.a).toUpperCase().split(''); for(let i=chars.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[chars[i],chars[j]]=[chars[j],chars[i]];} 
+        html = wrap('Anagram Word Solver','Ayusin ang mga titik upang mabuo ang sagot.',`<p class="font-bold mb-3">${safe(item.q)}</p><p class="text-center text-2xl tracking-widest font-black mb-4">${safe(chars.join(' '))}</p><input id="proAnswer" class="w-full border rounded-xl p-3" placeholder="I-type ang tamang salita">${checkButton}`);
+      }
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = html || '<p>Hindi pa available ang larong ito.</p>';
+    }
+
+    // Balloon Pop (freewebgames-style): balloons are lives, on-screen + physical keyboard, hint, points & bonuses.
+    let balloonPopState = null, balloonPoints = 0, balloonKeyHandler = null;
+    const BP_COLORS=['#c0453f','#7b4a8a','#3b8f78','#c9a86a','#a24a5d','#4f7fa0'], BP_POS=[[-36,-96],[-10,-124],[20,-110],[42,-90],[-50,-74],[2,-88]];
+    function bpBalloonMarkup(){let s='',b='';BP_POS.forEach(([x,y],i)=>{s+=`<line class="gp-bp-str" id="bpS${i}" x1="0" y1="0" x2="${x}" y2="${y+22}"/>`;b+=`<g class="gp-bp-b" id="bpB${i}"><ellipse cx="${x}" cy="${y}" rx="18" ry="22" fill="${BP_COLORS[i]}"/><ellipse cx="${x-6}" cy="${y-8}" rx="4" ry="7" fill="#fff" opacity=".3"/><path d="M${x-3} ${y+22}h6l-3 5z" fill="${BP_COLORS[i]}"/></g>`;});return {s,b};}
+    function bpMoveMan(st){const m=document.getElementById('gpBpMan');if(m)m.style.transform=`translate(210px,${160+st.misses*(120/st.maxMisses)}px)`;}
+    function bpLose(st){
+      const alive=()=>balloonPopState===st, d=()=>document.getElementById('gpBpDragon'), m=()=>document.getElementById('gpBpMan');
+      setTimeout(()=>{if(alive()&&d())d().classList.add('open');},250);
+      setTimeout(()=>{if(!alive()||!d())return;m().style.opacity=0;d().classList.remove('open');d().classList.add('bite');},900);
+      setTimeout(()=>{if(alive()&&d())d().classList.add('fire');},1250);
+    }
+    function renderBalloonPop() {
+      const body=document.getElementById('modalGameBody');
+      if(gameSession.qIndex>=currentQuestions.length){showGenericProResult(body);return;}
+      const item=currentQuestions[gameSession.qIndex], answer=toGameLetters(item.a);
+      balloonPopState={answer, guessed:new Set(), misses:0, maxMisses:6, done:false, t0:Date.now()};
+      body.className='p-3 sm:p-5 overflow-y-auto flex-1 min-h-[350px] block';
+      if(!answer){body.innerHTML='<div class="text-center py-8"><p class="mb-4">Walang titik ang sagot na ito, lalaktawan.</p><button onclick="nextProQuestion()" class="rounded-xl bg-indigo-600 text-white px-5 py-3 font-bold">Susunod →</button></div>';return;}
+      const letters=[...'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'], bp=bpBalloonMarkup();
+      const last=gameSession.qIndex+1>=currentQuestions.length;
+      body.innerHTML=`<style>
+        .gp-bp{max-width:680px;margin:0 auto}
+        .gp-bp-sk{font-family:'Amatic SC','Comic Sans MS',cursive;font-weight:700;color:#111;background:#fff;border:1px solid #e2e8f0;border-radius:22px;padding:14px 12px 12px}
+        .gp-bp-word{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 7px;margin:4px 0 10px}
+        .gp-bp-gap{width:22px}
+        .gp-bp-tile{width:clamp(24px,6vw,38px);height:clamp(40px,8vw,52px);border-bottom:5px solid #111;display:flex;align-items:center;justify-content:center;font-size:clamp(34px,7vw,48px);line-height:1;color:#111}
+        .gp-bp-main{display:grid;gap:8px;align-items:start}
+        .gp-bp-scene{display:block;width:100%;max-width:300px;margin:0 auto;order:-1}
+        @media(min-width:560px){.gp-bp-main{grid-template-columns:1fr 1fr}.gp-bp-scene{order:0;max-width:none}}
+        .gp-bp-keys{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+        .gp-bp-key{aspect-ratio:1;min-width:0;border:3px solid #111;border-radius:3px;background:#fff;color:#111;font-family:inherit;font-weight:700;font-size:clamp(28px,6vw,40px);line-height:1;display:grid;place-items:center;padding:0}
+        .gp-bp-key:not(:disabled):hover{background:#111;color:#fff}
+        .gp-bp-key:disabled{border-color:#cfcfcf;color:#cfcfcf;cursor:default}
+        .gp-bp-key.hit:disabled{border-color:#111;color:#111;opacity:.35}
+        .gp-bp-b{transform-box:fill-box;transform-origin:center}
+        .gp-bp-b.pop{animation:gp-bp-pop .3s forwards}
+        .gp-bp-str.pop{opacity:0}
+        @keyframes gp-bp-pop{40%{transform:scale(1.5);opacity:1}100%{transform:scale(2);opacity:0}}
+        #gpBpMan{transition:transform .6s cubic-bezier(.5,0,.4,1),opacity .2s}
+        .bp-mouth{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(.05);transition:transform .25s}
+        #gpBpDragon.open .bp-mouth{transform:scaleY(1)}
+        .bp-fire{opacity:0;transform-box:fill-box;transform-origin:100% 50%}
+        #gpBpDragon.fire .bp-fire{opacity:1;animation:gp-bp-fl .18s infinite alternate}
+        @keyframes gp-bp-fl{to{transform:scale(1.12,.9)}}
+        #gpBpDragon{transform-box:fill-box}
+        #gpBpDragon.bite{animation:gp-bp-bite .35s}
+        @keyframes gp-bp-bite{40%{transform:translateY(-10px)}}
+        @keyframes gp-bp-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+        .gp-bp-stage.shake{animation:gp-bp-shake .25s}
+        @media(prefers-reduced-motion:reduce){.gp-bp-b,.gp-bp-stage.shake,#gpBpMan,#gpBpDragon{animation:none!important;transition:none!important}}
+      </style>
+      <div class="gp-bp">
+        <div class="flex items-center justify-between gap-2 mb-3 text-xs font-extrabold">
+          <span class="rounded-full bg-fuchsia-100 text-fuchsia-700 px-3 py-1.5">Round ${gameSession.qIndex+1}/${currentQuestions.length}</span>
+          <span class="rounded-full bg-amber-100 text-amber-700 px-3 py-1.5">⭐ <span id="gpBpScore">${balloonPoints}</span> puntos</span>
+          <button id="gpBpHint" onclick="useBalloonHint()" class="rounded-full bg-yellow-300 hover:bg-yellow-200 text-yellow-900 px-3 py-1.5">💡 Hint (-1 🎈)</button>
+        </div>
+        <div class="rounded-2xl bg-white border border-sky-100 shadow-sm px-4 py-3 text-center mb-3"><div class="text-[10px] font-black tracking-widest text-sky-600">CLUE</div><p class="font-bold text-slate-800">${gpEscape(item.q)}</p></div>
+        <div class="gp-bp-sk gp-bp-stage" id="gpBpStage">
+          <div class="gp-bp-word" id="gpBalloonWord">${Array.from(answer).map((ch,i)=>ch===' '?'<span class="gp-bp-gap"></span>':`<span class="gp-bp-tile" data-balloon-char="${i}"></span>`).join('')}</div>
+          <div class="gp-bp-main">
+            <div id="gpBpKeys" class="gp-bp-keys">${letters.map(ch=>`<button class="gp-bp-key" data-k="${ch}" onclick="guessBalloonLetter('${ch}')">${ch}</button>`).join('')}</div>
+            <svg class="gp-bp-scene" viewBox="0 0 420 520" role="img" aria-label="A stickman holding balloons above a dragon">
+    <g fill="#ececec">
+      <path d="M60 10 98 10 112 470 20 470Z"/><path d="M210 30 262 20 280 470 190 470Z"/><path d="M330 90 390 80 410 470 320 470Z"/>
+    </g>
+    <g id="gpBpDragon" transform="translate(210 495)">
+      <ellipse cx="0" cy="2" rx="105" ry="11" fill="#d8d8d8"/>
+      <g fill="#3a9d4a">
+        <path d="M45-38Q105-30 120-70Q128-92 112-100Q122-72 98-58Q75-48 50-62Z"/>
+        <path d="M112-100 128-122 122-92Z"/>
+        <path d="M-25-70Q-95-150-112-105Q-88-102-92-82Q-70-90-62-66Z"/>
+        <ellipse cx="0" cy="-45" rx="66" ry="46"/>
+        <ellipse cx="-34" cy="-4" rx="24" ry="10"/><ellipse cx="34" cy="-4" rx="24" ry="10"/>
+        <path d="M-30-88-20-110-10-88ZM-8-92 4-114 14-92ZM14-88 28-108 36-84Z" transform="translate(30 6)"/>
+        <ellipse cx="0" cy="-92" rx="46" ry="36"/>
+        <path d="M-34-110-52-146-18-120ZM34-110 52-146 18-120Z"/>
+      </g>
+      <g class="bp-mouth"><path d="M-30-78Q0-60 30-78Q26-48 0-46Q-26-48-30-78Z" fill="#7a1414"/></g>
+      <g fill="#fff"><path d="M-24-78-18-62-12-78ZM12-78 18-62 24-78Z"/></g>
+      <g>
+        <ellipse cx="-19" cy="-100" rx="11" ry="9" fill="#fff"/><ellipse cx="19" cy="-100" rx="11" ry="9" fill="#fff"/>
+        <ellipse cx="-19" cy="-98" rx="3" ry="7" fill="#c8a000"/><ellipse cx="19" cy="-98" rx="3" ry="7" fill="#c8a000"/>
+        <path d="M-32-112-6-104-6-110-32-120ZM32-112 6-104 6-110 32-120Z" fill="#3a9d4a" stroke="#3a9d4a" stroke-width="4"/>
+        <path d="M-5-82h3M2-82h3" stroke="#1d5e28" stroke-width="3"/>
+      </g>
+      <path class="bp-fire" d="M-30-70Q-90-96-150-60Q-120-62-110-48Q-135-34-90-34Q-110-20-70-24Q-50-30-30-54Z" fill="#f08a1c" stroke="#e0301e" stroke-width="3"/>
+    </g>
+    <g id="gpBpMan" style="transform:translate(210px,160px)">
+      <g stroke="#111" stroke-width="1.6">${bp.s}</g><g>${bp.b}</g>
+      <g stroke="#000" stroke-width="4" stroke-linecap="round" fill="none">
+        <path d="M0 58V104M0 104-9 140M0 104 9 140"/>
+        <path d="M-15 70Q-14 58 0 58Q14 58 15 70L13 94H-13Z" fill="#e0463c" stroke-width="3"/><path d="M-12 76H12" stroke="#fff" stroke-width="3"/><path d="M-13 68Q-24 38-6 6M13 68Q24 38 6 6"/><circle cx="-6" cy="4" r="4" fill="#fff" stroke-width="3"/><circle cx="6" cy="4" r="4" fill="#fff" stroke-width="3"/><circle cx="0" cy="44" r="14" fill="#fff"/>
+        <path d="M-14 40Q0 26 14 40M2 38h14" stroke-width="5"/>
+        <path d="M-5 50Q0 55 5 50" stroke-width="2.5"/>
+        <path d="M-13 90H13L15 116H2L0 106L-2 116H-15Z" fill="#3b6fb6" stroke-width="3"/>
+      </g>
+      <circle cx="-4" cy="45" r="1.6" fill="#000"/><circle cx="5" cy="45" r="1.6" fill="#000"/>
+    </g>
+  </svg>
+          </div>
+          <p class="text-center text-2xl mt-1">Natitirang lobo: <span id="gpBalloonMisses">${balloonPopState.maxMisses}</span>/${balloonPopState.maxMisses}</p>
+        </div>
+        <div id="gpBalloonFeedback" class="mt-3 text-center font-bold min-h-6" aria-live="polite"></div>
+        <div id="gpBalloonNext" class="hidden text-center mt-2"><button onclick="nextProQuestion()" class="rounded-xl bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-6 py-3 font-extrabold">${last?'Tingnan ang Resulta':'Susunod na Round'} ↵</button></div>
+      </div>`;
+      updateBalloonWord();
+      if(balloonKeyHandler)document.removeEventListener('keydown',balloonKeyHandler);
+      balloonKeyHandler=e=>{
+        if(currentGameId!=='balloonpop'||document.getElementById('gameModal').classList.contains('hidden')||e.ctrlKey||e.metaKey||e.altKey)return;
+        const st=balloonPopState; if(!st)return;
+        if(e.key==='Enter'&&st.done){e.preventDefault();nextProQuestion();return;}
+        const k=e.key.length===1?e.key.toLocaleUpperCase():'';
+        if(/^[A-ZÑ]$/.test(k)){e.preventDefault();guessBalloonLetter(k);}
+      };
+      document.addEventListener('keydown',balloonKeyHandler);
+    }
+    function gpEscape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function updateBalloonWord(){if(!balloonPopState)return;document.querySelectorAll('[data-balloon-char]').forEach(el=>{const i=Number(el.dataset.balloonChar),ch=balloonPopState.answer[i];el.textContent=balloonPopState.guessed.has(ch)?ch:'';});}
+    function guessBalloonLetter(ch,isHint){
+      const st=balloonPopState;
+      if(!st||st.done||st.guessed.has(ch))return;
+      st.guessed.add(ch);
+      const hit=st.answer.includes(ch), btn=document.querySelector(`#gpBpKeys [data-k="${ch}"]`);
+      if(btn){btn.disabled=true;btn.classList.add(hit?'hit':'miss');}
+      if(hit&&!isHint)balloonPoints+=[...st.answer].filter(x=>x===ch).length*10;
+      if(!hit||isHint){
+        const b=document.getElementById('bpB'+st.misses),bs=document.getElementById('bpS'+st.misses);if(b)b.classList.add('pop');if(bs)bs.classList.add('pop');
+        st.misses++;bpMoveMan(st);
+        const stage=document.getElementById('gpBpStage');if(stage){stage.classList.remove('shake');void stage.offsetWidth;stage.classList.add('shake');}
+      }
+      const left=st.maxMisses-st.misses;
+      const ml=document.getElementById('gpBalloonMisses');if(ml)ml.textContent=left;
+      updateBalloonWord();
+      const won=[...st.answer].every(c=>c===' '||st.guessed.has(c));
+      if(won||left<=0){
+        st.done=true;if(!won)bpLose(st);
+        const secs=Math.round((Date.now()-st.t0)/1000), fb=document.getElementById('gpBalloonFeedback');
+        if(won){
+          const bonus=left*20+Math.max(0,20-secs);balloonPoints+=bonus;gameSession.score++;
+          if(typeof confetti==='function')confetti({particleCount:90,spread:65});
+          fb.innerHTML=`<span class="text-emerald-700">🎉 Tama! Bonus +${bonus} (${left} 🎈 natira, ${secs}s)</span>`;
+        }else fb.innerHTML=`<span class="text-rose-700">💥 Naubos ang mga lobo! Ang sagot ay <strong>${gpEscape(st.answer)}</strong></span>`;
+        const sc=document.getElementById('gpBpScore');if(sc)sc.textContent=balloonPoints;
+        document.querySelectorAll('#gpBpKeys button,#gpBpHint').forEach(x=>x.disabled=true);
+        document.getElementById('gpBalloonNext').classList.remove('hidden');
+        return;
+      }
+      const sc=document.getElementById('gpBpScore');if(sc)sc.textContent=balloonPoints;
+    }
+    function useBalloonHint(){
+      const st=balloonPopState;if(!st||st.done)return;
+      const fb=document.getElementById('gpBalloonFeedback');
+      if(st.maxMisses-st.misses<=1){fb.innerHTML='<span class="text-amber-700">Huling lobo na—hindi na puwede ang hint.</span>';return;}
+      const missing=[...new Set([...st.answer].filter(c=>c!==' '&&!st.guessed.has(c)))];
+      if(!missing.length)return;
+      guessBalloonLetter(missing[Math.floor(Math.random()*missing.length)],true);
+    }
+    // Mastery Quest: active-recall mission with hint ladder, 2 tries, star rewards, a Review Round for missed items, and a study sheet.
+    let masteryState=null;
+    function mqDist(a,b){const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);for(let j=1;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
+    function mqMatch(typed,item){const t=normalizeProAnswer(typed);if(!t)return 'no';if(ansOK(typed,item))return 'exact';const all=[item.a,...(item.alts||[])].map(normalizeProAnswer);if(all.some(a=>a.length>=6&&mqDist(t,a)<=1))return 'close';return 'no';}
+    function mqPattern(ans,hints,all){
+      const ch=[...String(ans)];
+      return ch.map((c,i)=>{
+        if(c===' ')return '<span class="gp-mq-gap"></span>';
+        if(!/[\p{L}\p{N}]/u.test(c))return `<span class="gp-mq-punc">${gpEscape(c)}</span>`;
+        const first=i===0||ch[i-1]===' ',last=i===ch.length-1||ch[i+1]===' ';
+        const show=all||(hints>=1&&first)||(hints>=2&&last);
+        return `<span class="gp-mq-tile${show?' on':''}">${show?gpEscape(c.toLocaleUpperCase()):''}</span>`;
+      }).join('');
+    }
+    function renderMasteryQuest(){
+      const body=document.getElementById('modalGameBody');
+      if(!masteryState)masteryState={queue:currentQuestions.map((_,i)=>({i,review:false,status:'todo'})),pos:0,attempts:0,hints:0,paid:0,stars:0,streak:0,best:0,locked:false};
+      const st=masteryState;
+      if(st.pos>=st.queue.length){mqFinish(body);return;}
+      const cur=st.queue[st.pos],item=currentQuestions[cur.i],total=currentQuestions.length;
+      st.attempts=0;st.hints=0;st.paid=0;st.locked=false;
+      body.className='p-3 sm:p-5 overflow-y-auto flex-1 min-h-[350px] block';
+      const nodes=st.queue.map((e,k)=>`<span class="gp-mq-node ${k===st.pos?'cur':e.status==='ok'?'done':e.status==='bad'?'miss':''}${e.review?' rev':''}">${e.status==='ok'?'✓':e.status==='bad'?'✗':e.review?'↻':k+1}</span>`).join('<span class="gp-mq-link"></span>');
+      body.innerHTML=`<style>
+        .gp-mq{max-width:720px;margin:0 auto}
+        .gp-mq-hero{border-radius:24px;background:linear-gradient(135deg,#0f766e,#0e7490 55%,#1d4ed8);color:#fff;padding:16px}
+        .gp-mq-chip{border-radius:999px;background:rgba(255,255,255,.18);padding:5px 12px}
+        .gp-mq-path{display:flex;align-items:center;overflow-x:auto;padding:12px 2px 4px;scrollbar-width:thin}
+        .gp-mq-node{flex:none;width:30px;height:30px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:900;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.35)}
+        .gp-mq-node.done{background:#34d399;border-color:#a7f3d0;color:#064e3b}
+        .gp-mq-node.miss{background:#fb7185;border-color:#fecdd3;color:#4c0519}
+        .gp-mq-node.cur{background:#fde68a;border-color:#fff;color:#78350f;animation:gp-mq-pulse 1.4s ease-in-out infinite}
+        .gp-mq-node.rev{border-style:dashed;border-color:#fdba74}
+        .gp-mq-link{flex:none;width:12px;height:3px;background:rgba(255,255,255,.3)}
+        @keyframes gp-mq-pulse{50%{transform:scale(1.15)}}
+        .gp-mq-card{margin-top:12px;border-radius:24px;background:#fff;border:1px solid #ccfbf1;box-shadow:0 8px 24px -14px #0f766e;padding:16px}
+        .gp-mq-pattern{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:16px 0}
+        .gp-mq-tile{width:clamp(22px,6vw,34px);height:clamp(32px,8vw,44px);border-radius:8px;border:2px solid #99f6e4;background:#f0fdfa;display:grid;place-items:center;font-weight:900;font-size:clamp(16px,4vw,22px);color:#134e4a}
+        .gp-mq-tile.on{background:#ccfbf1;border-color:#2dd4bf}
+        .gp-mq-gap{width:14px}.gp-mq-punc{font-weight:900;color:#134e4a;align-self:center}
+        @keyframes gp-mq-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+        .gp-mq-shake{animation:gp-mq-shake .3s}
+        @media(prefers-reduced-motion:reduce){.gp-mq-node.cur,.gp-mq-shake{animation:none}}
+      </style>
+      <div class="gp-mq">
+        <div class="gp-mq-hero">
+          <div class="flex items-start justify-between gap-3">
+            <div><p class="text-xs font-black tracking-widest text-teal-100">${cur.review?'REVIEW ROUND · BALIKAN NATIN':'CHECKPOINT '+(cur.i+1)+' / '+total}</p><h2 class="text-2xl sm:text-3xl font-black">🧭 Mastery Quest</h2></div>
+            <div class="flex gap-2 text-sm font-black"><span class="gp-mq-chip">⭐ <span id="gpMqStars">${st.stars}</span></span><span class="gp-mq-chip">🔥 <span id="gpMqStreak">${st.streak}</span></span></div>
+          </div>
+          <div class="gp-mq-path">${nodes}</div>
+        </div>
+        <div class="gp-mq-card">
+          ${cur.review?'<p class="text-xs font-black text-orange-600 mb-2">🔁 Nagkamali ka rito kanina. Sagutin ulit para tumatak!</p>':''}
+          <p class="text-xs font-black text-teal-700">CLUE</p>
+          <p class="text-lg font-bold text-slate-800 mt-1">${gpEscape(item.q)}</p>
+          <div class="gp-mq-pattern" id="gpMqPattern">${mqPattern(item.a,0,false)}</div>
+          <div id="gpMqEntry" class="flex gap-2"><input id="gpMqInput" autocomplete="off" class="flex-1 min-w-0 rounded-xl border-2 border-teal-200 p-3 font-bold" placeholder="I-type ang sagot" onkeydown="if(event.key==='Enter')mqCheck()"><button id="gpMqCheck" onclick="mqCheck()" class="rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-5 font-black">Suriin</button></div>
+          <div class="flex items-center justify-between gap-2 mt-3"><button id="gpMqHint" onclick="mqHint()" class="rounded-full bg-amber-100 hover:bg-amber-200 text-amber-800 px-4 py-1.5 text-sm font-bold">💡 Hint (-1 ⭐)</button><span class="text-xs text-slate-500">2 subok bawat tanong</span></div>
+          <div id="gpMqFeedback" class="mt-4 min-h-6 text-center font-bold" aria-live="polite"></div>
+          <div id="gpMqLearn"></div>
+          <div id="gpMqNext" class="hidden text-center mt-3"><button id="gpMqNextBtn" onclick="mqNext()" class="rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 font-black">Susunod →</button></div>
+        </div>
+      </div>`;
+      setTimeout(()=>{const i=document.getElementById('gpMqInput');if(i)i.focus();},50);
+    }
+    function mqHint(){
+      const st=masteryState;if(!st||st.locked||st.hints>=2)return;
+      st.hints++;st.paid++;
+      const item=currentQuestions[st.queue[st.pos].i];
+      document.getElementById('gpMqPattern').innerHTML=mqPattern(item.a,st.hints,false);
+      if(st.hints>=2)document.getElementById('gpMqHint').disabled=true;
+      const inp=document.getElementById('gpMqInput');if(inp)inp.focus();
+    }
+    function mqCheck(){
+      const st=masteryState;if(!st||st.locked)return;
+      const inp=document.getElementById('gpMqInput');if(!inp)return;
+      if(!inp.value.trim()){inp.focus();return;}
+      const cur=st.queue[st.pos],item=currentQuestions[cur.i],r=mqMatch(inp.value,item);
+      if(r!=='no'){const stars=cur.review?1:Math.max(1,3-st.paid-(st.attempts?1:0));mqSettle(true,stars,r==='close'?'Halos! Tamang baybay: '+item.a:'');return;}
+      st.attempts++;
+      if(st.attempts<2){
+        if(st.hints<1){st.hints=1;document.getElementById('gpMqPattern').innerHTML=mqPattern(item.a,1,false);}
+        document.getElementById('gpMqFeedback').innerHTML='<span class="text-amber-700">Hindi pa tama. Subukan ulit, nakita mo na ang unang letra!</span>';
+        const en=document.getElementById('gpMqEntry');en.classList.remove('gp-mq-shake');void en.offsetWidth;en.classList.add('gp-mq-shake');
+        inp.value='';inp.focus();return;
+      }
+      mqSettle(false,0,'');
+    }
+    function mqSettle(ok,stars,note){
+      const st=masteryState,cur=st.queue[st.pos],item=currentQuestions[cur.i];
+      st.locked=true;cur.status=ok?'ok':'bad';st.stars+=stars;
+      const clean=ok&&st.attempts===0&&st.paid===0;if(ok)awardPts(item,clean?1:0.5);
+      if(clean){st.streak++;st.best=Math.max(st.best,st.streak);}else st.streak=0;
+      let requeued=false;if(!ok&&!cur.review){st.queue.push({i:cur.i,review:true,status:'todo'});requeued=true;}
+      document.getElementById('gpMqPattern').innerHTML=mqPattern(item.a,2,true);
+      ['gpMqInput','gpMqCheck','gpMqHint'].forEach(id=>{const e=document.getElementById(id);if(e)e.disabled=true;});
+      document.getElementById('gpMqFeedback').innerHTML=ok?`<span class="text-emerald-700">✅ Tama! +${stars} ⭐${note?' · '+gpEscape(note):''}</span>`:`<span class="text-rose-700">Ang tamang sagot ay <strong>${gpEscape(item.a)}</strong>.${requeued?' Babalikan natin ito sa Review Round.':''}</span>`;
+      document.getElementById('gpMqLearn').innerHTML=`<div class="rounded-2xl ${ok?'bg-emerald-50 border-emerald-200':'bg-rose-50 border-rose-200'} border p-3 text-left"><p class="text-xs font-black ${ok?'text-emerald-700':'text-rose-700'}">📌 TANDAAN</p><p class="font-bold text-slate-800 mt-1">${gpEscape(item.q)}</p><p class="mt-1 text-slate-700">➜ <strong>${gpEscape(item.a)}</strong></p></div>`;
+      document.getElementById('gpMqStars').textContent=st.stars;document.getElementById('gpMqStreak').textContent=st.streak;
+      if(clean&&typeof confetti==='function')confetti({particleCount:40,spread:50,origin:{y:.7}});
+      const nb=document.getElementById('gpMqNextBtn');if(nb){nb.textContent=st.pos+1>=st.queue.length?'Tingnan ang Resulta →':'Susunod →';}
+      document.getElementById('gpMqNext').classList.remove('hidden');if(nb)nb.focus();
+    }
+    function mqNext(){const st=masteryState;if(!st)return;st.pos++;renderMasteryQuest();}
+    function mqFinish(body){
+      const st=masteryState,total=currentQuestions.length,mains=st.queue.filter(e=>!e.review);
+      const first=mains.filter(e=>e.status==='ok').length,missed=mains.filter(e=>e.status==='bad');
+      const recovered=st.queue.filter(e=>e.review&&e.status==='ok').length,pct=Math.round(100*first/total);
+      gameSession.score=first;
+      const badge=pct>=90?'🏆 Master ka na!':pct>=70?'🌟 Magaling!':pct>=40?'👍 Magandang simula!':'💪 Kaya mo ito, balikan natin!';
+      if(pct===100&&typeof confetti==='function')confetti({particleCount:120,spread:75});
+      body.className='p-3 sm:p-5 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML=`<div class="max-w-xl mx-auto"><div class="rounded-3xl bg-gradient-to-br from-teal-700 via-cyan-700 to-blue-700 text-white text-center p-6"><div class="text-5xl">🧭</div><h2 class="text-2xl font-black mt-2">${badge}</h2><p class="mt-1 text-teal-50">Natapos mo ang Mastery Quest</p><div class="grid grid-cols-3 gap-2 mt-4 text-sm font-black"><div class="rounded-2xl bg-white/15 p-3"><div class="text-2xl">${first}/${total}</div>Tama sa unang takbo</div><div class="rounded-2xl bg-white/15 p-3"><div class="text-2xl">⭐ ${st.stars}</div>sa ${total*3} na bituin</div><div class="rounded-2xl bg-white/15 p-3"><div class="text-2xl">🔥 ${st.best}</div>pinakamahabang streak</div></div>${recovered?`<p class="mt-3 text-sm text-teal-50">💪 ${recovered} tanong ang naitama mo sa Review Round.</p>`:''}</div>
+        ${missed.length?`<div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p class="font-black text-amber-800 mb-2">📚 Study Sheet: balikan ang mga ito</p><ul class="space-y-2 text-sm text-slate-800">${missed.map(e=>`<li><span class="font-bold">${gpEscape(currentQuestions[e.i].q)}</span><br>➜ <strong class="text-amber-800">${gpEscape(currentQuestions[e.i].a)}</strong></li>`).join('')}</ul></div>`:'<p class="mt-4 text-center font-bold text-emerald-700">Walang kailangang balikan. Perfect!</p>'}
+        <div class="text-center mt-4"><button onclick="showStudentForm()" class="rounded-xl bg-indigo-600 text-white px-5 py-3 font-bold">I-save ang Score</button><button onclick="masteryState=null;gameSession.score=0;renderMasteryQuest()" class="ml-2 rounded-xl border px-5 py-3 font-bold">Ulitin</button></div></div>`;
+    }
+    // Jeopardy board: choose a point tile, answer the clue, then return to the board.
+    let jeopardyState=null;
+    function jepPts(i){const q=currentQuestions[i];return q&&q.pts?Number(q.pts):(Math.floor(i/4)+1)*100;}
+    function renderJeopardyBoard(){
+      const body=document.getElementById('modalGameBody');if(!currentQuestions.length){body.innerHTML='<p class="text-center">Magdagdag muna ng mga tanong.</p>';return;}
+      if(!jeopardyState||jeopardyState.questions!==currentQuestions){jeopardyState={questions:currentQuestions,answered:new Set(),selected:null,score:0};}
+      if(jeopardyState.answered.size>=currentQuestions.length){body.innerHTML=`<div class="text-center py-8"><div class="text-5xl">🏆</div><h2 class="text-2xl font-black mt-3">Jeopardy Tapos Na!</h2><p class="mt-2">Puntos: <strong>${jeopardyState.score}</strong></p><button onclick="showStudentForm()" class="mt-4 bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold">I-save ang Score</button><button onclick="jeopardyState=null;renderJeopardyBoard()" class="mt-4 ml-2 border px-5 py-3 rounded-xl font-bold">Ulitin</button></div>`;gameSession.score=jeopardyState.score;return;}
+      const cats=['KONSEPTO','PAG-UNAWA','APLIKASYON','CHALLENGE'];
+      body.className='p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML=`<style>.gp-jep-tile{min-height:68px;background:linear-gradient(145deg,#1d4ed8,#312e81);color:#fde68a;border:2px solid #60a5fa;border-radius:10px;font-size:22px;font-weight:950}.gp-jep-tile:disabled{background:#64748b;color:#cbd5e1;border-color:#94a3b8;opacity:.65}.gp-jep-cat{background:#172554;color:white;padding:10px 4px;border-radius:8px;font-size:11px;font-weight:900;text-align:center}</style><div class="max-w-4xl mx-auto"><div class="text-center mb-4"><p class="text-xs uppercase tracking-widest font-black text-blue-600">CLASSROOM GAME SHOW</p><h2 class="text-2xl sm:text-3xl font-black">🏆 Jeopardy</h2><p class="text-sm text-slate-500 mt-1">Pumili ng puntos, basahin ang clue, at ilagay ang sagot.</p><p class="mt-2 font-black text-blue-800">Score: <span id="gpJepScore">${jeopardyState.score}</span> puntos</p></div><div class="grid grid-cols-4 gap-2 mb-2">${cats.map(c=>`<div class="gp-jep-cat">${c}</div>`).join('')}</div><div class="grid grid-cols-4 gap-2">${currentQuestions.map((q,i)=>{const points=jepPts(i);return `<button id="gpJepTile${i}" class="gp-jep-tile" ${jeopardyState.answered.has(i)?'disabled':''} onclick="openJeopardyClue(${i})" aria-label="Clue ${i+1}, ${points} puntos">${jeopardyState.answered.has(i)?'✓':points}</button>`;}).join('')}</div><div id="gpJeopardyClue" class="mt-4"></div><div class="text-xs text-slate-500 mt-3">Nasagutan: <span id="gpJepCount">${jeopardyState.answered.size}</span>/${currentQuestions.length}</div></div>`;
+    }
+    function openJeopardyClue(i){if(jeopardyState.answered.has(i))return;const q=currentQuestions[i],points=jepPts(i);jeopardyState.selected=i;const area=document.getElementById('gpJeopardyClue');area.innerHTML=`<div class="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4"><p class="text-xs font-black text-blue-700 mb-1">${points} PUNTOS</p><p class="text-lg font-bold">${gpEscape(q.q)}</p><input id="gpJeopardyAnswer" autocomplete="off" onkeydown="if(event.key==='Enter')checkJeopardyAnswer()" class="w-full rounded-xl border p-3 mt-3" placeholder="I-type ang sagot"><div class="mt-3"><button onclick="checkJeopardyAnswer()" class="w-full bg-blue-700 text-white rounded-xl p-3 font-bold">Suriin</button></div><div id="gpJeopardyFeedback" class="mt-3 font-bold text-center"></div></div>`;area.scrollIntoView({behavior:'smooth',block:'nearest'});const inp=document.getElementById('gpJeopardyAnswer');if(inp)inp.focus();}
+    function checkJeopardyAnswer(){const i=jeopardyState.selected;if(i==null||jeopardyState.answered.has(i))return;const typed=document.getElementById('gpJeopardyAnswer').value;if(!typed.trim())return;const correct=ansOK(typed,currentQuestions[i]);const points=currentQuestions[i].pts?Number(currentQuestions[i].pts):jepPts(i);if(correct)jeopardyState.score+=points;finishJeopardyClue(correct,points);}
+    function finishJeopardyClue(correct,points){
+      const i=jeopardyState.selected;if(i==null||jeopardyState.answered.has(i))return;
+      jeopardyState.answered.add(i);
+      const fb=document.getElementById('gpJeopardyFeedback');
+      if(fb)fb.innerHTML=`${correct?'🎉 Tama! +'+points+' puntos. ':'Hindi tama. Sagot: '}<strong>${gpEscape(currentQuestions[i].a)}</strong>`;
+      document.querySelectorAll('#gpJeopardyClue button,#gpJeopardyClue input').forEach(b=>b.disabled=true);
+      const t=document.getElementById('gpJepTile'+i);if(t){t.disabled=true;t.textContent=correct?'✓':'✗';t.style.background=correct?'#059669':'#be123c';t.style.color='#fff';}
+      const sc=document.getElementById('gpJepScore');if(sc)sc.textContent=jeopardyState.score;
+      const ct=document.getElementById('gpJepCount');if(ct)ct.textContent=jeopardyState.answered.size;
+      gameSession.score=jeopardyState.score;
+      if(jeopardyState.answered.size>=currentQuestions.length)setTimeout(()=>{if(jeopardyState&&currentGameId==='jeopardy')renderJeopardyBoard();},1600);
+    }
+
+    // Millionaire-style multiple-choice challenge (classroom points only; no wagering).
+    let millionaireState=null;
+    function renderMillionaireGame(){
+      const body=document.getElementById('modalGameBody');if(!currentQuestions.length){body.innerHTML='<p class="text-center">Magdagdag muna ng mga tanong.</p>';return;}
+      if(millionaireState&&millionaireState.timer){clearInterval(millionaireState.timer);millionaireState.timer=null;}
+      if(!millionaireState||millionaireState.questions!==currentQuestions){millionaireState={questions:currentQuestions,index:0,score:0,used5050:false,finished:false};}
+      millionaireState.selected=null;millionaireState.locked=false;millionaireState.revealed=false;
+      if(millionaireState.index>=currentQuestions.length||millionaireState.finished){body.innerHTML=`<div class="max-w-xl mx-auto text-center rounded-3xl bg-gradient-to-b from-indigo-950 to-blue-900 text-white p-8"><div class="text-5xl">💎</div><h2 class="text-2xl font-black mt-3">Final Answer!</h2><p class="mt-3">Nakuha mo ang <strong>${millionaireState.score}</strong> sa ${currentQuestions.length} tanong.</p><button onclick="showStudentForm()" class="mt-5 rounded-xl bg-amber-400 text-indigo-950 px-5 py-3 font-black">I-save ang Score</button><button onclick="millionaireState=null;renderMillionaireGame()" class="mt-3 ml-2 rounded-xl border border-white/30 px-5 py-3 font-bold">Ulitin</button></div>`;gameSession.score=millionaireState.score;return;}
+      const item=currentQuestions[millionaireState.index],money=['₱1,000','₱2,000','₱3,000','₱5,000','₱10,000','₱20,000','₱40,000','₱80,000','₱160,000','₱320,000','₱640,000','₱1,000,000'];
+      const wrong=[...new Set(currentQuestions.filter((q,i)=>i!==millionaireState.index).map(q=>String(q.a)).filter(a=>normalizeProAnswer(a)!==normalizeProAnswer(item.a)))];for(let i=wrong.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[wrong[i],wrong[j]]=[wrong[j],wrong[i]];}
+      let options=[String(item.a),...wrong.slice(0,3)];const filler=['Pagpipilian A','Pagpipilian B','Pagpipilian C'];while(options.length<4)options.push(filler[options.length-1]);for(let i=options.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
+      window._millionaireOptions=options;window._millionaireMoney=money;body.className='p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML=`<style>.gp-mil-opt{background:#172554;color:white;border:1px solid #60a5fa;border-radius:14px;padding:13px;text-align:left;font-weight:800}.gp-mil-opt:hover:not(:disabled){background:#1d4ed8}.gp-mil-ladder{background:#1e3a8a;color:#dbeafe;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:800}.gp-mil-ladder.active{background:#fbbf24;color:#1e1b4b}.gp-mil-opt.sel{background:#fbbf24;color:#1e1b4b;border-color:#fde68a}.gp-mil-opt.ok{background:#059669;border-color:#6ee7b7;color:#fff}.gp-mil-opt.bad{background:#be123c;border-color:#fda4af;color:#fff}.gp-mil-opt:disabled:not(.ok):not(.bad){cursor:default}</style><div class="max-w-3xl mx-auto rounded-3xl bg-gradient-to-b from-indigo-950 via-blue-950 to-indigo-900 p-4 sm:p-6 text-white"><div class="text-center mb-4"><p class="text-xs tracking-widest font-black text-amber-300">GUROPLAY GAME SHOW</p><h2 class="text-2xl sm:text-3xl font-black mt-1">💎 Who Wants to Be a Millionaire?</h2><p class="text-sm text-blue-100 mt-2">Tanong ${millionaireState.index+1} sa ${currentQuestions.length} · Score: ${millionaireState.score}</p></div><div class="grid sm:grid-cols-3 gap-2 mb-4"><div class="rounded-xl bg-white/10 p-2 text-center sm:col-span-2"><div class="text-xs text-blue-100">Lifelines (isang beses bawat isa)</div><div class="flex flex-wrap justify-center gap-2"><button onclick="useMillionaire5050()" id="gpMil5050" class="mt-1 rounded-lg bg-amber-400 text-indigo-950 px-3 py-1.5 text-xs font-black disabled:opacity-40 disabled:line-through" ${millionaireState.used5050?'disabled':''}>50:50</button><button onclick="useMillionairePhone()" id="gpMilPhone" class="mt-1 rounded-lg bg-amber-400 text-indigo-950 px-3 py-1.5 text-xs font-black disabled:opacity-40 disabled:line-through" ${millionaireState.usedPhone?'disabled':''}>📞 Phone a Friend</button><button onclick="useMillionaireAudience()" id="gpMilAud" class="mt-1 rounded-lg bg-amber-400 text-indigo-950 px-3 py-1.5 text-xs font-black disabled:opacity-40 disabled:line-through" ${millionaireState.usedAud?'disabled':''}>👥 Ask the Audience</button></div></div><div class="rounded-xl bg-white/10 p-2 text-center"><div class="text-xs text-blue-100">Antas ng Premyo (game points)</div><div class="font-black text-amber-300">${money[Math.min(millionaireState.index,money.length-1)]}</div></div></div><div class="rounded-2xl bg-white text-slate-900 p-4 sm:p-5"><p class="text-xs uppercase font-black text-indigo-600 mb-2">FINAL ANSWER?</p><p class="text-lg sm:text-xl font-black">${gpEscape(item.q)}</p><div class="grid sm:grid-cols-2 gap-2 mt-4" id="gpMilOptions">${options.map((a,i)=>`<button id="gpMilOpt${i}" class="gp-mil-opt" onclick="selectMillionaire(${i})">${String.fromCharCode(65+i)}. ${gpEscape(a)}</button>`).join('')}</div><div id="gpMilLifeline" class="mt-3"></div><div id="gpMilFeedback" class="mt-3 text-center font-bold"></div><div class="mt-4 flex items-center justify-center gap-3"><button id="gpMilLock" onclick="lockMillionaire()" disabled class="rounded-xl bg-amber-400 text-indigo-950 px-5 py-3 font-black disabled:opacity-40 disabled:cursor-not-allowed">Lock In &amp; Continue →</button><span id="gpMilTimer" class="hidden min-w-[4rem] text-center rounded-full bg-indigo-100 text-indigo-800 px-3 py-2 text-sm font-black">⏱ 5s</span></div></div><div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-4">${currentQuestions.map((q,i)=>`<div class="gp-mil-ladder ${i===millionaireState.index?'active':''}">${i+1}. ${money[Math.min(i,money.length-1)]}</div>`).join('')}</div></div>`;
+    }
+    function selectMillionaire(i){
+      const st=millionaireState;if(!st||st.locked)return;
+      st.selected=i;
+      document.querySelectorAll('#gpMilOptions button').forEach((b,k)=>b.classList.toggle('sel',k===i));
+      const lk=document.getElementById('gpMilLock');if(lk)lk.disabled=false;
+    }
+    function lockMillionaire(){
+      const st=millionaireState;if(!st)return;
+      if(st.revealed){nextMillionaireQuestion();return;}
+      if(st.locked||st.selected==null)return;
+      st.locked=true;
+      document.querySelectorAll('#gpMilOptions button').forEach(b=>{b.disabled=true;});
+      ['gpMil5050','gpMilPhone','gpMilAud'].forEach(id=>{const e=document.getElementById(id);if(e)e.disabled=true;});
+      const lk=document.getElementById('gpMilLock'),tm=document.getElementById('gpMilTimer'),fb=document.getElementById('gpMilFeedback');
+      if(lk){lk.disabled=true;lk.textContent='Naka-lock na ang sagot...';}
+      if(fb)fb.innerHTML='<span class="text-indigo-700">🔒 Final answer na ito. Hinihintay ang resulta...</span>';
+      let left=5;if(tm){tm.classList.remove('hidden');tm.textContent='⏱ '+left+'s';}
+      st.timer=setInterval(()=>{
+        const t=document.getElementById('gpMilTimer');
+        if(millionaireState!==st||!t){clearInterval(st.timer);st.timer=null;return;}
+        left--;t.textContent='⏱ '+Math.max(left,0)+'s';
+        if(left<=0){clearInterval(st.timer);st.timer=null;revealMillionaire();}
+      },1000);
+    }
+    function revealMillionaire(){
+      const st=millionaireState;if(!st||st.revealed)return;
+      st.revealed=true;
+      const item=currentQuestions[st.index],correctN=normalizeProAnswer(item.a),money=window._millionaireMoney||[];
+      const correct=normalizeProAnswer(window._millionaireOptions[st.selected])===correctN;
+      document.querySelectorAll('#gpMilOptions button').forEach((b,k)=>{b.classList.remove('sel');if(normalizeProAnswer(window._millionaireOptions[k])===correctN)b.classList.add('ok');else if(k===st.selected)b.classList.add('bad');});
+      const fb=document.getElementById('gpMilFeedback');
+      if(correct){st.score++;awardPts(item);gameSession.score=st.score;if(typeof confetti==='function')confetti({particleCount:70,spread:60});fb.innerHTML=`<span class="text-emerald-700">✅ Correct Answer! Napanalunan mo ang ${money[Math.min(st.index,money.length-1)]||'premyo'}.</span>`;}
+      else{fb.innerHTML=`<span class="text-rose-700">❌ Wrong Answer. Game over! Ang tamang sagot ay <strong>${gpEscape(item.a)}</strong>.</span>`;st.finished=true;}
+      const tm=document.getElementById('gpMilTimer');if(tm)tm.classList.add('hidden');
+      const lk=document.getElementById('gpMilLock');
+      if(lk){lk.disabled=false;lk.textContent=!correct?'Game Over: Tingnan ang Resulta →':(st.index+1>=currentQuestions.length?'Tingnan ang Resulta →':'Next Question →');}
+    }
+    function milAlive(){return [...document.querySelectorAll('#gpMilOptions button')].map((b,i)=>b.disabled?-1:i).filter(i=>i>=0);}
+    function milCorrectIndex(){const cn=normalizeProAnswer(currentQuestions[millionaireState.index].a);return window._millionaireOptions.findIndex(o=>normalizeProAnswer(o)===cn);}
+    function useMillionairePhone(){
+      const st=millionaireState;if(!st||st.usedPhone||st.locked||st.revealed)return;
+      st.usedPhone=true;const btn=document.getElementById('gpMilPhone');if(btn)btn.disabled=true;
+      const opts=window._millionaireOptions,alive=milAlive(),ci=milCorrectIndex();
+      let pick=ci;
+      if(Math.random()>0.7||!alive.includes(ci)){const w=alive.filter(k=>k!==ci);if(w.length)pick=w[Math.floor(Math.random()*w.length)];}
+      const conf=pick===ci?55+Math.floor(Math.random()*36):35+Math.floor(Math.random()*36);
+      const friends=['Ate Nina','Kuya Jomar','Mareng Lyn','Sir Ben','Tita Cora','Bestie Paolo'],f=friends[Math.floor(Math.random()*friends.length)],L=String.fromCharCode(65+pick);
+      const hedge=conf>=75?'Sigurado ako rito!':conf>=55?'Parang ito yata…':'Hindi ako masyadong sigurado, pero…';
+      const area=document.getElementById('gpMilLifeline');if(!area)return;
+      area.innerHTML=`<div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-3 text-left"><p class="text-xs font-black text-indigo-700">📞 PHONE A FRIEND</p><p class="mt-1 text-sm text-slate-700" id="gpMilPhoneLine">Tinatawagan si <strong>${f}</strong>… <span class="animate-pulse">☎️</span></p></div>`;
+      setTimeout(()=>{const line=document.getElementById('gpMilPhoneLine');if(millionaireState!==st||!line)return;
+        line.innerHTML=`<strong>${f}</strong>: “Hello! ${hedge} Sa tingin ko ang sagot ay <strong>${L}. ${gpEscape(opts[pick])}</strong>. Mga <strong>${conf}%</strong> sigurado ako.”`;},1500);
+    }
+    function useMillionaireAudience(){
+      const st=millionaireState;if(!st||st.usedAud||st.locked||st.revealed)return;
+      st.usedAud=true;const btn=document.getElementById('gpMilAud');if(btn)btn.disabled=true;
+      const alive=milAlive(),ci=milCorrectIndex(),wrongs=alive.filter(k=>k!==ci);
+      const leadCorrect=alive.includes(ci)&&(Math.random()<0.8||!wrongs.length);
+      const lead=leadCorrect?ci:wrongs[Math.floor(Math.random()*wrongs.length)];
+      const pct=[0,0,0,0],leadVal=alive.length===1?100:(leadCorrect?45+Math.floor(Math.random()*31):36+Math.floor(Math.random()*15));
+      const others=alive.filter(k=>k!==lead),w=others.map(k=>Math.random()+0.2+((!leadCorrect&&k===ci)?1.2:0)),sw=w.reduce((x,y)=>x+y,0);
+      let used=0;others.forEach((k,j)=>{const v=Math.floor((100-leadVal)*w[j]/sw);pct[k]=v;used+=v;});
+      pct[lead]=100-used;
+      const area=document.getElementById('gpMilLifeline');if(!area)return;
+      area.innerHTML=`<div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-3"><p class="text-xs font-black text-indigo-700">👥 ASK THE AUDIENCE</p><p id="gpMilAudNote" class="text-sm text-slate-600 mt-1 mb-2">Binibilang ang boto ng audience…</p><div class="flex items-end justify-around gap-3 h-36">${[0,1,2,3].map(k=>`<div class="flex flex-col items-center justify-end h-full flex-1 max-w-[80px]"><span class="gp-aud-pct text-xs font-black text-indigo-900 mb-1 opacity-0 transition-opacity duration-500">${pct[k]}%</span><div class="gp-aud-bar w-full rounded-t-lg bg-gradient-to-t from-amber-500 to-yellow-300" data-h="${Math.max(3,Math.round(pct[k]*.95))}" style="height:0;transition:height .9s ease"></div><span class="mt-1 font-black text-slate-800">${String.fromCharCode(65+k)}</span></div>`).join('')}</div></div>`;
+      setTimeout(()=>{if(millionaireState!==st)return;area.querySelectorAll('.gp-aud-bar').forEach(b=>{b.style.height=b.dataset.h+'px';});area.querySelectorAll('.gp-aud-pct').forEach(e=>e.classList.remove('opacity-0'));const n=document.getElementById('gpMilAudNote');if(n)n.textContent='Ito ang boto ng audience:';},1100);
+    }
+    function nextMillionaireQuestion(){if(!millionaireState)return;if(millionaireState.timer){clearInterval(millionaireState.timer);millionaireState.timer=null;}if(millionaireState.finished||millionaireState.index+1>=currentQuestions.length){millionaireState.index=currentQuestions.length;renderMillionaireGame();return;}millionaireState.index++;renderMillionaireGame();}
+    function useMillionaire5050(){const st=millionaireState;if(!st||st.used5050||st.locked)return;st.used5050=true;const correct=normalizeProAnswer(currentQuestions[st.index].a);const wrongButtons=[...document.querySelectorAll('#gpMilOptions button')].filter((b,i)=>normalizeProAnswer(window._millionaireOptions[i])!==correct);wrongButtons.slice(0,2).forEach(b=>{b.disabled=true;b.style.opacity='.22';b.dataset.eliminated='true';});const btn=document.getElementById('gpMil5050');if(btn){btn.disabled=true;btn.textContent='Used';}if(st.selected!=null){const sel=document.getElementById('gpMilOpt'+st.selected);if(sel&&sel.disabled){st.selected=null;const lk=document.getElementById('gpMilLock');if(lk)lk.disabled=true;}}}
+
+    let mysteryBoxState = null;
+    function renderMysteryBoxGame() {
+      const body = document.getElementById('modalGameBody');
+      mysteryBoxState = {
+        opened: new Set(),
+        selected: null,
+        answered: new Set(),
+        score: 0,
+        surprises: ['👻', '🎅', '🧙', '🦖', '🤡', '🐱', '🧛', '🦄', '🎃', '🐸', '🧟', '🎁']
+      };
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = `
+        <div class="max-w-3xl mx-auto">
+          <div class="text-center mb-5">
+            <p class="text-xs uppercase tracking-widest font-bold text-orange-600">SURPRISE CHALLENGE</p>
+            <h2 class="text-2xl font-black mt-1">🎁 Mystery Box</h2>
+            <p class="text-sm text-slate-600 mt-2">Pumili ng kahon. May sorpresa munang lalabas bago ipakita ang tanong. Bawat kahon ay may katumbas na isang tanong.</p>
+            <p class="mt-2 font-bold text-orange-700">Mga kahon: ${currentQuestions.length} · Nasagutan: <span id="mysteryProgress">0</span>/${currentQuestions.length} · Score: <span id="mysteryScore">0</span></p>
+          </div>
+          <div id="mysteryRoundFeedback" class="hidden rounded-xl p-3 mb-4 text-center font-bold" aria-live="polite"></div>
+          <div id="mysteryBoxes" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-5">
+            ${currentQuestions.map((q,i)=>`<button id="mysteryBox${i}" onclick="openMysteryBox(${i})" class="min-h-24 rounded-2xl border-2 border-orange-300 bg-gradient-to-br from-amber-300 to-orange-500 hover:from-amber-200 hover:to-orange-400 shadow-md text-white p-4 transition-transform hover:scale-105"><span class="block text-3xl">🎁</span><span class="block mt-1 font-extrabold">Kahon ${i+1}</span></button>`).join('')}
+          </div>
+          <div id="mysteryReveal" class="hidden rounded-2xl border-2 border-orange-200 bg-orange-50 p-4 sm:p-6 text-center">
+            <div id="mysterySurprise" class="text-6xl sm:text-7xl mb-3" aria-live="polite"></div>
+            <p id="mysterySurpriseText" class="font-extrabold text-orange-700 mb-4"></p>
+            <div id="mysteryQuestionArea" class="hidden text-left bg-white rounded-xl p-4 border border-orange-200">
+              <p id="mysteryQuestion" class="font-bold text-lg mb-3"></p>
+              <input id="mysteryAnswer" class="w-full border rounded-xl p-3" placeholder="I-type ang sagot" autocomplete="off">
+              <button id="mysteryCheckBtn" onclick="checkMysteryAnswer()" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2.5 font-bold">Suriin ang Sagot</button>
+              <div id="mysteryFeedback" class="mt-3 text-center font-bold" aria-live="polite"></div>
+              <button id="mysteryBackBtn" onclick="returnToMysteryBoxes()" class="hidden mt-3 w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl px-4 py-2.5 font-bold">Bumalik sa mga Kahon</button>
+            </div>
+          </div>
+          <div id="mysteryFinished" class="hidden text-center rounded-2xl bg-emerald-50 border border-emerald-200 p-6">
+            <div class="text-5xl mb-2">🏆</div><h3 class="text-2xl font-black">Nabuksan na ang lahat ng kahon!</h3>
+            <p class="mt-2">Score: <strong><span id="mysteryFinalScore">0</span>/${currentQuestions.length}</strong></p>
+            <button onclick="showStudentForm()" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 py-3 font-bold">I-save ang Score sa Leaderboard</button>
+          </div>
+        </div>`;
+    }
+    function openMysteryBox(index) {
+      if (!mysteryBoxState || mysteryBoxState.opened.has(index) || mysteryBoxState.selected !== null) return;
+      mysteryBoxState.selected = index;
+      mysteryBoxState.opened.add(index);
+      const box = document.getElementById(`mysteryBox${index}`);
+      if (box) {
+        box.disabled = true;
+        box.className = 'min-h-24 rounded-2xl border-2 border-slate-300 bg-slate-100 text-slate-500 p-4 opacity-60';
+        box.innerHTML = `<span class="block text-3xl">📦</span><span class="block mt-1 font-extrabold">Kahon ${index+1}</span><span class="text-xs">Binuksan na</span>`;
+      }
+      currentQuestions.forEach((q, i) => {
+        const otherBox = document.getElementById(`mysteryBox${i}`);
+        if (otherBox && i !== index && !mysteryBoxState.opened.has(i)) {
+          otherBox.disabled = true;
+          otherBox.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+      });
+      const reveal = document.getElementById('mysteryReveal');
+      const surprise = mysteryBoxState.surprises[Math.floor(Math.random()*mysteryBoxState.surprises.length)];
+      const names = {'👻':'Boooo! May multo! 👻', '🎅':'Ho, ho, ho! Merry Christmas! 🎅', '🧙':'Abracadabra! Handa ka na ba sa mahika? 🪄', '🦖':'ROAAAR! Dinosaur na ito! 🦖', '🤡':'Knock, knock! May nakakatawang bisita! 🤡', '🐱':'Meow, meow! Hello, mingming! 🐱', '🧛':'Boo! Isang bampira ang bumati sa iyo! 🧛', '🦄':'Sparkles and magic! Hello, unicorn! 🦄', '🎃':'Trick or treat! Happy Halloween! 🎃', '🐸':'Ribbit, ribbit! Kumusta, palaka ito! 🐸', '🧟':'Braaaains! Joke lang—surprise! 🧟', '🎁':'Ta-da! Surprise! Ano kaya ito? 🎁'};
+      reveal.classList.remove('hidden');
+      const icon = document.getElementById('mysterySurprise');
+      const label = document.getElementById('mysterySurpriseText');
+      const area = document.getElementById('mysteryQuestionArea');
+      area.classList.add('hidden');
+      icon.textContent = surprise;
+      label.textContent = names[surprise];
+      icon.classList.remove('mystery-pop');
+      void icon.offsetWidth;
+      icon.classList.add('mystery-pop');
+      document.getElementById('mysteryFeedback').textContent = '';
+      document.getElementById('mysteryAnswer').value = '';
+      document.getElementById('mysteryCheckBtn').classList.remove('hidden');
+      document.getElementById('mysteryBackBtn').classList.add('hidden');
+      window.setTimeout(() => {
+        if (!mysteryBoxState || mysteryBoxState.selected !== index) return;
+        document.getElementById('mysteryQuestion').textContent = currentQuestions[index].q;
+        area.classList.remove('hidden');
+        document.getElementById('mysteryAnswer').focus();
+      }, 1300);
+      reveal.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+    function checkMysteryAnswer() {
+      if (!mysteryBoxState || mysteryBoxState.selected === null) return;
+      const input = document.getElementById('mysteryAnswer');
+      if (!input || !input.value.trim()) { input?.focus(); return; }
+      const index = mysteryBoxState.selected;
+      const correct = ansOK(input.value, currentQuestions[index]);
+      const box = document.getElementById(`mysteryBox${index}`);
+      const roundFeedback = document.getElementById('mysteryRoundFeedback');
+      if (correct) {
+        mysteryBoxState.score++;
+        awardPts(currentQuestions[index]);
+        gameSession.score = mysteryBoxState.score;
+        box.innerHTML = `<span class="block text-3xl">✅</span><span class="block mt-1 font-extrabold">Kahon ${index+1}</span><span class="text-xs">Tamang sagot</span>`;
+        box.className = 'min-h-24 rounded-2xl border-2 border-emerald-300 bg-emerald-100 text-emerald-800 p-4';
+        roundFeedback.textContent = `🎉 Tama ang sagot sa Kahon ${index+1}! Pumili ng susunod na kahon.`;
+        roundFeedback.className = 'rounded-xl p-3 mb-4 text-center font-bold bg-emerald-50 text-emerald-700 border border-emerald-200';
+      } else {
+        box.innerHTML = `<span class="block text-3xl">📝</span><span class="block mt-1 font-extrabold">Kahon ${index+1}</span><span class="text-xs">Nasubukan na</span>`;
+        box.className = 'min-h-24 rounded-2xl border-2 border-rose-200 bg-rose-50 text-rose-700 p-4';
+        roundFeedback.textContent = `Hindi tama ang sagot sa Kahon ${index+1}. Puwede ka nang pumili ng ibang kahon.`;
+        roundFeedback.className = 'rounded-xl p-3 mb-4 text-center font-bold bg-rose-50 text-rose-700 border border-rose-200';
+      }
+      mysteryBoxState.answered.add(index);
+      document.getElementById('mysteryProgress').textContent = mysteryBoxState.answered.size;
+      document.getElementById('mysteryScore').textContent = mysteryBoxState.score;
+      returnToMysteryBoxes();
+      if (mysteryBoxState.opened.size === currentQuestions.length) {
+        document.getElementById('mysteryFinished').classList.remove('hidden');
+        document.getElementById('mysteryFinalScore').textContent = mysteryBoxState.score;
+        document.getElementById('mysteryFinished').scrollIntoView({behavior:'smooth', block:'nearest'});
+      }
+    }
+    function returnToMysteryBoxes() {
+      const reveal = document.getElementById('mysteryReveal');
+      reveal.classList.add('hidden');
+      mysteryBoxState.selected = null;
+      currentQuestions.forEach((q, i) => {
+        const box = document.getElementById(`mysteryBox${i}`);
+        if (box && !mysteryBoxState.opened.has(i)) {
+          box.disabled = false;
+          box.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      });
+      const roundFeedback = document.getElementById('mysteryRoundFeedback');
+      if (roundFeedback) roundFeedback.classList.remove('hidden');
+      if (mysteryBoxState.opened.size === currentQuestions.length) {
+        document.getElementById('mysteryFinished').classList.remove('hidden');
+      }
+    }
+
+    let crosswordState = null;
+    function renderCrosswordPuzzle(){
+      const body=document.getElementById('modalGameBody');
+      const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const clean=v=>String(v||'').toLocaleUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,18);
+      crosswordState={entries:currentQuestions.map((q,i)=>({i,clue:q.q,answer:clean(q.a),solved:false})).filter(x=>x.answer),checked:false};
+      body.className='p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML=`<div class="max-w-4xl mx-auto"><div class="text-center mb-5"><p class="text-xs uppercase tracking-widest font-bold text-teal-600">CROSSWORD CHALLENGE</p><h2 class="text-2xl font-black mt-1">🧩 Crossword Puzzle</h2><p class="text-sm text-slate-600 mt-2">Sagutan ang lahat ng clue sa puzzle. Isulat ang tig-isang letra sa mga kahon, mula kaliwa pakanan. Hindi kailangang tapusin ang isang salita bago makita ang susunod na clue.</p></div><div class="rounded-xl border-2 border-teal-200 bg-teal-50 p-3 mb-4 flex flex-wrap justify-between gap-2"><b>ACROSS →</b><span class="text-sm">${crosswordState.entries.length} salita · Score: <span id="crosswordScore">0</span></span></div><div class="space-y-4" id="crosswordAllEntries">${crosswordState.entries.map((entry,n)=>`<section class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm" data-crossentry="${n}"><div class="flex gap-2 items-start mb-2"><span class="shrink-0 rounded bg-teal-700 text-white font-black text-xs px-2 py-1">${n+1}</span><p class="font-bold text-slate-800">${safe(entry.clue)}</p></div><div class="flex flex-wrap gap-1 mb-2" aria-label="Mga kahon para sa sagot ${n+1}">${Array.from(entry.answer).map((_,j)=>`<input data-cross-entry="${n}" data-cross-pos="${j}" aria-label="Clue ${n+1}, titik ${j+1}" maxlength="1" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(-1);if(this.value){const ns=[...document.querySelectorAll('[data-cross-entry=\"${n}\"]')];const k=ns.indexOf(this);if(ns[k+1])ns[k+1].focus()}" class="w-7 h-8 sm:w-8 sm:h-9 border-2 border-slate-700 bg-white rounded-none text-center font-black uppercase focus:bg-yellow-100 focus:outline-teal-600" /></div>`).join('')}</div><input data-cross-typed="${n}" class="w-full border border-slate-300 rounded-lg p-2 text-sm" placeholder="O i-type ang buong sagot dito"></section>`).join('')}</div><button onclick="checkCrosswordAnswer()" class="mt-4 w-full bg-teal-700 hover:bg-teal-800 text-white rounded-xl px-4 py-3 font-bold">✓ Suriin ang Lahat ng Sagot</button><div id="crosswordFeedback" class="mt-3 text-center font-bold" aria-live="polite"></div><button id="crosswordSaveBtn" onclick="showStudentForm()" class="hidden mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-3 font-bold">🏆 I-save ang Score sa Leaderboard</button></div>`;
+    }
+    function checkCrosswordAnswer(){
+      if(!crosswordState)return;
+      const normalize=v=>String(v||'').toLocaleUpperCase().replace(/[^A-Z0-9]/g,'');
+      let correct=0,completed=0;
+      crosswordState.entries.forEach((entry,n)=>{
+        const typed=document.querySelector(`[data-cross-typed="${n}"]`)?.value||'';
+        const cells=[...document.querySelectorAll(`[data-cross-entry="${n}"][data-cross-pos]`)].map(x=>x.value).join('');
+        const guess=normalize(typed)||normalize(cells),ok=guess===entry.answer;
+        const section=document.querySelector(`[data-crossentry="${n}"]`);
+        if(ok){correct++;entry.solved=true;if(section){section.classList.add('border-emerald-500','bg-emerald-50');section.querySelectorAll('input').forEach(x=>{x.disabled=true;x.classList.add('bg-emerald-100','border-emerald-500')})}}
+        else if(guess){if(section){section.classList.add('border-rose-400');section.classList.remove('border-emerald-500','bg-emerald-50')}}
+        if(entry.solved)completed++;
+      });
+      gameSession.score=correct;const scoreEl=document.getElementById('crosswordScore');if(scoreEl)scoreEl.textContent=correct;
+      const fb=document.getElementById('crosswordFeedback');
+      if(fb)fb.innerHTML=completed===crosswordState.entries.length?'<span class="text-emerald-700">🎉 Mahusay! Nasagutan mo ang lahat ng salita!</span>':`<span class="text-teal-800">${completed} sa ${crosswordState.entries.length} ang tama. Itama ang mga natitirang sagot at pindutin muli ang Suriin.</span>`;
+      if(typeof confetti==='function'&&completed===crosswordState.entries.length)confetti({particleCount:100,spread:70});
+      const save=document.getElementById('crosswordSaveBtn');if(save&&completed===crosswordState.entries.length)save.classList.remove('hidden');
+    }
+
+    // Educational Whack-a-Word: cartoon mallet, varied animals, one correct answer per question.
+    let moleInterval = null, moleClockInterval = null, molePopInterval = null, moleState = null, moleHammerMove = null;
+    const moleAnimals = ['🐸','🐼','🦊','🐵','🐯','🐮','🐷','🐰','🐻','🐤','🦁','🐨','🐙','🦄','🐢'];
+    function renderWhackAMole() {
+      if(moleInterval) clearInterval(moleInterval); if(moleClockInterval) clearInterval(moleClockInterval); if(molePopInterval) clearInterval(molePopInterval);
+      moleState={started:false,ended:false,score:0,index:0,seconds:90,questions:[...currentQuestions].sort(()=>Math.random()-.5),best:Number(localStorage.getItem('guroplay_mole_best')||0),lastWrong:''};
+      const body=document.getElementById('modalGameBody'); body.className='p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML=`<style>@keyframes gp-pop{0%{transform:scale(.7) translateY(15px)}70%{transform:scale(1.08)}100%{transform:scale(1)}}@keyframes gp-shake{0%,100%{transform:rotate(0)}40%{transform:rotate(-25deg)}70%{transform:rotate(20deg)}}.gp-animal{animation:gp-pop .2s ease-out;display:block}.gp-hole .gp-creature{transition:transform .22s ease,opacity .22s ease}.gp-hole.gp-hidden-animal .gp-creature{transform:translateY(48px) scale(.65);opacity:0}.gp-hole.gp-hidden-animal .gp-headanswer{transform:translateY(24px);opacity:0}.gp-hole .gp-headanswer{transition:transform .22s ease,opacity .22s ease}.gp-mallet{position:absolute;z-index:30;pointer-events:none;font-size:2.5rem;filter:drop-shadow(2px 3px 1px #0004);transform:rotate(-25deg);display:none}.gp-hole{min-height:95px;position:relative;overflow:hidden;touch-action:manipulation}.gp-headanswer{font-size:clamp(10px,2.5vw,14px);line-height:1.1;overflow-wrap:anywhere}</style><div class="max-w-2xl mx-auto text-center"><p class="text-xs uppercase tracking-widest font-bold text-amber-600">ANIMAL ANSWER SMASH • 90-SECOND CHALLENGE</p><h2 class="text-2xl font-black mt-1">🐸 Whack-a-Word!</h2><p class="text-sm text-slate-600 mt-2">Basahin ang tanong at hanapin ang hayop na may tamang sagot sa ulo. <b>Piliin ang tamang sagot</b> gamit ang martilyo! Isa lang ang tamang sagot—mag-ingat dahil maraming panggulong sagot.</p><div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-3 my-3"><div class="text-xs font-bold text-indigo-500">TANONG <span id="moleQNum">1</span> / ${moleState.questions.length}</div><div id="moleQuestion" class="text-lg sm:text-xl font-black text-slate-800 mt-1">Pindutin ang Simulan ang Laro.</div></div><div class="grid grid-cols-3 gap-2 my-3"><div class="rounded-xl bg-amber-50 p-2"><div class="text-xs text-slate-500">ORAS</div><div id="moleTime" class="text-2xl font-black text-amber-700">01:30</div></div><div class="rounded-xl bg-indigo-50 p-2"><div class="text-xs text-slate-500">SCORE</div><div id="moleScore" class="text-2xl font-black text-indigo-700">0</div></div><div class="rounded-xl bg-emerald-50 p-2"><div class="text-xs text-slate-500">NATIRA</div><div id="moleLeft" class="text-2xl font-black text-emerald-700">${moleState.questions.length}</div></div></div><div id="moleBoardWrap" class="relative"><span id="moleHammer" class="gp-mallet">🔨</span><div id="moleBoard" class="grid grid-cols-3 gap-2 sm:gap-3 p-3 rounded-2xl bg-emerald-100 border-4 border-emerald-300">${Array.from({length:9},(_,i)=>`<button id="moleHole${i}" onclick="whackMole(${i})" class="gp-hole rounded-2xl bg-white border-2 border-emerald-300 shadow-md grid place-items-center p-2" aria-label="Animal at answer choice ${i+1}"><span class="text-4xl">🕳️</span><span class="gp-headanswer font-black text-slate-700">—</span></button>`).join('')}</div></div><div id="moleStatus" class="min-h-12 mt-3 font-bold text-slate-600" aria-live="polite">Pindutin ang Simulan ang Laro.</div><button id="moleStartBtn" onclick="startWhackAMole()" class="mt-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-7 py-3 font-extrabold shadow">🔨 Simulan ang Laro</button></div>`;
+      const board=document.getElementById('moleBoardWrap'), hammer=document.getElementById('moleHammer'); if(board&&hammer){board.addEventListener('pointermove',e=>{const r=board.getBoundingClientRect();hammer.style.display='block';hammer.style.left=(e.clientX-r.left-14)+'px';hammer.style.top=(e.clientY-r.top-22)+'px';});board.addEventListener('pointerleave',()=>hammer.style.display='none');}
+    }
+    function startWhackAMole(){
+      if(!moleState||moleState.started||moleState.ended)return;
+      if(!moleState.questions.length){finishWhackAMole();return;}
+      moleState.started=true;moleState.endAt=Date.now()+90000;const btn=document.getElementById('moleStartBtn');if(btn)btn.classList.add('hidden');
+      showMoleQuestion();moleClockInterval=setInterval(()=>{if(!moleState||moleState.ended)return;const remaining=Math.max(0,Math.ceil((moleState.endAt-Date.now())/1000));const el=document.getElementById('moleTime');if(el)el.textContent=`${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;if(remaining<=0)finishWhackAMole();},200);
+    }
+    function showMoleQuestion(){
+      if(!moleState||moleState.ended)return;
+      if(moleState.index>=moleState.questions.length){finishWhackAMole();return;}
+      if(molePopInterval){clearInterval(molePopInterval);molePopInterval=null;}
+      const item=moleState.questions[moleState.index], safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      document.getElementById('moleQuestion').textContent=item.q;document.getElementById('moleQNum').textContent=moleState.index+1;document.getElementById('moleLeft').textContent=moleState.questions.length-moleState.index;
+      const wrongs=[...new Set(currentQuestions.filter(q=>String(q.a)!==String(item.a)).map(q=>q.a))].sort(()=>Math.random()-.5).slice(0,8);
+      while(wrongs.length<8)wrongs.push(['Hindi kabilang','Maling sagot','Hindi ito','Ibang konsepto','Walang kaugnayan','Subukan muli','Hindi tugma','Mali'][wrongs.length]);
+      const choices=[{a:item.a,correct:true},...wrongs.map(a=>({a,correct:false}))].sort(()=>Math.random()-.5);
+      choices.forEach((c,i)=>{const b=document.getElementById('moleHole'+i);if(!b)return;b.disabled=false;b.dataset.correct=c.correct?'1':'0';b.dataset.answer=String(c.a);b.innerHTML=`<span class="gp-creature gp-animal text-4xl sm:text-5xl">${moleAnimals[Math.floor(Math.random()*moleAnimals.length)]}</span><span class="gp-headanswer mt-1 rounded-lg bg-yellow-100 border border-yellow-300 px-1.5 py-1 w-full font-black text-slate-800">${safe(c.a)}</span>`;b.classList.remove("gp-hidden-animal");b.className='gp-hole rounded-2xl bg-white border-2 border-emerald-300 shadow-md grid place-items-center p-2 hover:bg-yellow-50';});
+      document.getElementById('moleStatus').textContent='🔨 Bilisan! Pumupukol-pungas ang mga hayop—hanapin ang iisang tamang sagot.';
+      // Animals repeatedly pop up and duck back down to add a whack-a-mole thrill.
+      molePopInterval=setInterval(()=>{if(!moleState||moleState.ended||!moleState.started)return;const buttons=Array.from({length:9},(_,i)=>document.getElementById('moleHole'+i)).filter(b=>b&&!b.disabled);if(buttons.length<2)return;const payload=buttons.map(b=>({correct:b.dataset.correct,answer:b.dataset.answer,html:b.innerHTML}));for(let i=payload.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[payload[i],payload[j]]=[payload[j],payload[i]];}buttons.forEach((b,i)=>{b.dataset.correct=payload[i].correct;b.dataset.answer=payload[i].answer;b.innerHTML=payload[i].html;b.classList.remove('gp-hidden-animal');});const hideCount=2+Math.floor(Math.random()*4);const order=buttons.map((_,i)=>i).sort(()=>Math.random()-.5);order.slice(0,hideCount).forEach(i=>buttons[i].classList.add('gp-hidden-animal'));setTimeout(()=>{if(!moleState||moleState.ended)return;buttons.forEach(b=>{if(b&&!b.disabled)b.classList.remove('gp-hidden-animal');});},330);},1150);
+    }
+    function whackMole(index){
+      if(!moleState||!moleState.started||moleState.ended)return;const b=document.getElementById('moleHole'+index);if(!b||b.disabled||b.classList.contains('gp-hidden-animal'))return;
+      const hammer=document.getElementById('moleHammer');if(hammer){hammer.style.animation='gp-shake .18s';setTimeout(()=>hammer.style.animation='',220);}
+      if(b.dataset.correct==='1'){
+        moleState.score+=10;gameSession.score=moleState.score;document.getElementById('moleScore').textContent=moleState.score;b.classList.add('bg-emerald-100','border-emerald-500');b.innerHTML='<span class="text-5xl">💥</span><b class="text-emerald-700">TAMA!</b>';document.getElementById('moleStatus').innerHTML='<span class="text-emerald-700 text-xl">🎉 TAMA! Mahusay!</span>';
+        if(typeof confetti==='function')confetti({particleCount:85,spread:75,origin:{y:.65}});moleState.index++;document.getElementById('moleLeft').textContent=moleState.questions.length-moleState.index;
+        setTimeout(()=>{if(moleState&&!moleState.ended){if(moleState.index>=moleState.questions.length)finishWhackAMole();else showMoleQuestion();}},650);
+      }else{const wrong=b.dataset.answer||'sagot';b.classList.add('bg-rose-100','border-rose-400');b.innerHTML=`<span class="text-4xl">${moleAnimals[index% moleAnimals.length]}</span><b class="text-rose-700">😢 MALI: ${String(wrong).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</b>`;document.getElementById('moleStatus').innerHTML=`<span class="text-rose-600 text-lg">😭 MALI! “${String(wrong).replace(/[&<>"']/g,'')}” — subukan muli.</span>`;setTimeout(()=>{if(moleState&&!moleState.ended&&b){b.classList.remove('bg-rose-100','border-rose-400');}},500);}
+    }
+    function finishWhackAMole(){
+      if(!moleState||moleState.ended)return;moleState.ended=true;moleState.started=false;if(moleInterval){clearInterval(moleInterval);moleInterval=null;}if(moleClockInterval){clearInterval(moleClockInterval);moleClockInterval=null;}if(molePopInterval){clearInterval(molePopInterval);molePopInterval=null;}
+      const elapsed=Math.min(90,Math.floor((Date.now()-(gameSession.startTime||Date.now()))/1000));const body=document.getElementById('modalGameBody');
+      body.innerHTML=`<div class="max-w-md mx-auto text-center py-8"><div class="text-6xl mb-3">🏆</div><h2 class="text-2xl font-black">Tapos na ang Laro!</h2><p class="mt-3 text-slate-600">Score: <strong class="text-amber-600 text-3xl">${moleState.score}</strong> puntos</p><p class="mt-1 text-slate-500">Nasagutan: ${moleState.index}/${moleState.questions.length} · Oras: ${formatElapsed(elapsed)}</p><button onclick="showStudentForm()" class="mt-5 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 font-bold">🏆 I-save ang Score sa Leaderboard</button><button onclick="renderWhackAMole()" class="mt-2 w-full rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-5 py-3 font-bold">Laruin Muli</button></div>`;
+      if(typeof confetti==='function')confetti({particleCount:120,spread:80,origin:{y:.65}});
+    }
+
+    // WordSearch: find every answer directly in the grid; clues open from numbered buttons.
+    let wordSearchState = null;
+    let wordSearchTimerInterval = null;
+    function formatWordSearchTime(seconds) { const m=Math.floor(seconds/60), sec=seconds%60; return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
+    function updateWordSearchTimer() { const el=document.getElementById('wordSearchTimer'); if(!el || !wordSearchState) return; const end=wordSearchState.completedAt || Date.now(); el.textContent=formatWordSearchTime(Math.floor((end-gameSession.startTime)/1000)); }
+    function startWordSearchTimer() { if(wordSearchTimerInterval) clearInterval(wordSearchTimerInterval); updateWordSearchTimer(); wordSearchTimerInterval=setInterval(updateWordSearchTimer,1000); }
+    function renderWordSearchGame() {
+      const body = document.getElementById('modalGameBody');
+      const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const clean = s => toGameLetters(s).replace(/Ñ/g,'N').replace(/[^A-Z]/g, '').slice(0, 12);
+      if (!currentQuestions.length) { body.innerHTML = '<p class="text-center">Magdagdag muna ng mga tanong.</p>'; return; }
+      if (!wordSearchState || wordSearchState.gameKey !== currentGameId || wordSearchState.questions !== currentQuestions) {
+        const words = currentQuestions.map((q,i)=>({index:i, clue:String(q.q||''), answer:String(q.a||''), word:clean(q.a), found:false, cells:[]})).filter(x=>x.word.length>0);
+        const size = Math.max(10, Math.min(14, Math.max(...words.map(w=>w.word.length), 10) + 3));
+        const grid = Array.from({length:size},()=>Array(size).fill(''));
+        const dirs = [[0,1],[1,0],[1,1],[0,-1],[-1,0],[1,-1],[-1,1],[-1,-1]];
+        // Place longer answers first, allowing horizontal, vertical, and diagonal words.
+        const ordered = [...words].sort((a,b)=>b.word.length-a.word.length);
+        for (const w of ordered) {
+          let placed=false;
+          for(let attempt=0;attempt<500 && !placed;attempt++){
+            const [dr,dc]=dirs[Math.floor(Math.random()*dirs.length)];
+            const r=Math.floor(Math.random()*size), c=Math.floor(Math.random()*size);
+            const er=r+dr*(w.word.length-1), ec=c+dc*(w.word.length-1);
+            if(er<0||er>=size||ec<0||ec>=size) continue;
+            const cells=[]; let ok=true;
+            for(let k=0;k<w.word.length;k++){
+              const rr=r+dr*k,cc=c+dc*k,existing=grid[rr][cc];
+              if(existing && existing!==w.word[k]){ok=false;break;}
+              cells.push(rr*size+cc);
+            }
+            if(ok){for(let k=0;k<w.word.length;k++)grid[r+dr*k][c+dc*k]=w.word[k];w.cells=cells;placed=true;}
+          }
+          // A fallback guarantees the word is in the grid, even in a crowded puzzle.
+          if(!placed){let done=false;for(let r=0;r<size&&!done;r++)for(let c=0;c<=size-w.word.length&&!done;c++){let ok=true;for(let k=0;k<w.word.length;k++)if(grid[r][c+k]&&grid[r][c+k]!==w.word[k])ok=false;if(ok){w.cells=[];for(let k=0;k<w.word.length;k++){grid[r][c+k]=w.word[k];w.cells.push(r*size+c+k);}done=true;}}}
+        }
+        for(let r=0;r<size;r++)for(let c=0;c<size;c++)if(!grid[r][c])grid[r][c]='ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)];
+        wordSearchState={gameKey:currentGameId,questions:currentQuestions,size,grid,words:words.filter(w=>w.cells.length),selected:[],message:'',activeClue:null};
+      }
+      const st=wordSearchState, foundCount=st.words.filter(w=>w.found).length;
+      const foundCells=new Set(st.words.filter(w=>w.found).flatMap(w=>w.cells));
+      const clueList=st.words.map((w,i)=>`<button onclick="openWordSearchClue(${i})" class="w-full flex items-center gap-2 text-left rounded-lg border px-3 py-2 ${w.found?'bg-emerald-50 border-emerald-300 text-emerald-800':'bg-white hover:bg-indigo-50'}"><span class="flex-none w-7 h-7 rounded-md ${w.found?'bg-emerald-500':'bg-indigo-600'} text-white grid place-items-center text-sm font-black">${i+1}</span><span class="flex-1 text-sm font-semibold">${w.found?'✓ Nahanap na':'Tanong '+(i+1)}</span></button>`).join('');
+      const cells=st.grid.map((row,r)=>row.map((ch,c)=>{const idx=r*st.size+c;const selected=st.selected.includes(idx);return `<button data-ws-cell="${idx}" onclick="selectWordSearchCell(${idx})" class="aspect-square min-w-0 rounded-sm border text-xs sm:text-sm font-extrabold transition ${foundCells.has(idx)?'bg-emerald-300 border-emerald-500 text-emerald-950':selected?'bg-amber-300 border-amber-500 ring-2 ring-amber-400':'bg-white border-slate-300 text-indigo-800 hover:bg-indigo-100'}">${ch}</button>`}).join('')).join('');
+      body.className='p-3 sm:p-5 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML=`<div class="max-w-4xl mx-auto"><div class="text-center mb-3"><p class="text-xs uppercase tracking-widest font-bold text-indigo-500">WORDSEARCH GRID</p><h2 class="text-xl font-extrabold">Hanapin ang mga salita!</h2><p class="text-sm text-slate-500 mt-1">Pindutin ang numero sa gilid para makita ang clue. Pagkatapos, piliin ang unang titik at huling titik ng salita sa grid.</p><div class="flex flex-wrap justify-center items-center gap-3 mt-3"><p class="rounded-full bg-indigo-50 border border-indigo-200 px-4 py-2 font-black text-indigo-700">⏱ Oras: <span id="wordSearchTimer">00:00</span></p><p class="rounded-full bg-emerald-50 border border-emerald-200 px-4 py-2 font-bold text-emerald-700">Nahanap: ${foundCount}/${st.words.length}</p></div></div><div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_180px] gap-3 items-start"><div class="rounded-xl border bg-slate-100 p-2 sm:p-3"><div class="grid gap-[3px] mx-auto" style="grid-template-columns:repeat(${st.size},minmax(0,1fr));max-width:620px">${cells}</div><div class="flex flex-wrap gap-2 justify-center mt-3"><button onclick="clearWordSearchSelection()" class="rounded-lg border bg-white px-3 py-2 text-sm font-bold">Alisin ang selection</button></div></div><aside class="rounded-xl border bg-slate-50 p-3"><h3 class="font-extrabold mb-2">Mga Tanong</h3><p class="text-xs text-slate-500 mb-3">I-click ang numero para sa clue.</p><div class="grid grid-cols-2 md:grid-cols-1 gap-2">${clueList}</div></aside></div><div id="wsFeedback" class="mt-3 min-h-8 text-center font-extrabold" aria-live="polite">${safe(st.message)}</div><div id="wsClueModal" class="${st.activeClue===null?'hidden':''} fixed inset-0 z-[60] bg-slate-900/60 flex items-center justify-center p-4"><div class="w-full max-w-md rounded-2xl bg-white shadow-2xl p-5"><div class="flex items-start justify-between gap-3"><h3 class="text-lg font-black">Tanong #${st.activeClue===null?'':st.activeClue+1}</h3><button onclick="closeWordSearchClue()" aria-label="Isara" class="rounded-lg bg-slate-100 hover:bg-slate-200 px-3 py-1 font-bold">✕</button></div><p class="mt-4 text-slate-700 font-semibold">${st.activeClue===null?'':safe(st.words[st.activeClue]?.clue)}</p><p class="text-xs text-slate-500 mt-3">Isara ang tanong at hanapin ang salitang sagot sa grid.</p><button onclick="closeWordSearchClue()" class="mt-4 w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5">Close / Bumalik sa Word Search</button></div></div>${foundCount===st.words.length?`<div class="mt-4 text-center"><p class="text-2xl font-black text-emerald-700">🏆 Nahanap mo ang lahat ng salita!</p><button onclick="showWordSearchResult()" class="mt-2 bg-indigo-600 text-white rounded-xl px-5 py-3 font-bold">I-save ang Score</button></div>`:''}</div>`;
+      startWordSearchTimer();
+    }
+    function openWordSearchClue(i){if(!wordSearchState)return;wordSearchState.activeClue=i;renderWordSearchGame();}
+    function closeWordSearchClue(){if(!wordSearchState)return;wordSearchState.activeClue=null;renderWordSearchGame();}
+    function clearWordSearchSelection(){if(!wordSearchState)return;wordSearchState.selected=[];wordSearchState.message='';renderWordSearchGame();}
+    function selectWordSearchCell(idx){
+      const st=wordSearchState;if(!st)return;
+      if(st.activeClue!==null)return;
+      if(st.selected.length===0){st.selected=[idx];st.message='Piliin ang huling titik ng salita.';renderWordSearchGame();return;}
+      const start=st.selected[0];
+      if(start===idx){st.selected=[];st.message='';renderWordSearchGame();return;}
+      const n=st.size,r1=Math.floor(start/n),c1=start%n,r2=Math.floor(idx/n),c2=idx%n;
+      const dr=r2-r1,dc=c2-c1;
+      if(dr!==0&&dc!==0&&Math.abs(dr)!==Math.abs(dc)){st.selected=[idx];st.message='Pumili ng titik sa parehong linya.';renderWordSearchGame();return;}
+      const steps=Math.max(Math.abs(dr),Math.abs(dc)),sr=Math.sign(dr),sc=Math.sign(dc),path=[];
+      for(let k=0;k<=steps;k++)path.push((r1+sr*k)*n+(c1+sc*k));
+      const selectedWord=path.map(p=>st.grid[Math.floor(p/n)][p%n]).join('');
+      const reversed=selectedWord.split('').reverse().join('');
+      const target=st.words.find(w=>!w.found&&(w.word===selectedWord||w.word===reversed));
+      if(target){target.found=true;awardPts(currentQuestions[target.index]);st.selected=[];st.message=`🎉 Tama! Nahanap mo ang ${target.word}!`;gameSession.score++;if(st.words.every(w=>w.found))st.completedAt=Date.now();if(typeof confetti==='function')confetti({particleCount:90,spread:65,origin:{y:.65}});renderWordSearchGame();}
+      else {st.selected=[];st.message='Hindi tugma ang napiling salita. Subukan muli!';renderWordSearchGame();}
+    }
+    function showWordSearchResult(){const body=document.getElementById('modalGameBody');if(wordSearchTimerInterval){clearInterval(wordSearchTimerInterval);wordSearchTimerInterval=null;}const elapsed=Math.floor(((wordSearchState.completedAt||Date.now())-gameSession.startTime)/1000);body.innerHTML=`<div class="text-center w-full py-8"><div class="text-5xl mb-3">🏆</div><h2 class="text-2xl font-black">Mahusay! Nahanap ang lahat!</h2><p class="mt-2">Score: <strong>${wordSearchState.words.filter(w=>w.found).length}/${wordSearchState.words.length}</strong></p><p class="mt-2">Oras ng completion: <strong>${formatWordSearchTime(elapsed)}</strong></p><button onclick="showStudentForm()" class="mt-4 bg-indigo-600 text-white rounded-xl px-5 py-3 font-bold">I-save ang Score</button></div>`;}
+
+    function normalizeProAnswer(s) { return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().replace(/[-–—_]/g,' ').replace(/[^\p{L}\p{N}\s]/gu,'').replace(/\s+/g,' ').trim(); }
+    function showProFeedback(correct, explanation='') {
+      if (proRoundAnswered) return;
+      proRoundAnswered = true;
+      if (correct) { gameSession.score++; awardPts(currentQuestions[gameSession.qIndex]); if (typeof confetti === 'function') confetti({particleCount:90,spread:65,origin:{y:.65}}); }
+      const fb = document.getElementById('proFeedback');
+      if (fb) fb.innerHTML = correct ? '🎉 Tama ang sagot! Mahusay!' : `😞 Mali ang sagot. Tamang sagot: <strong>${String(currentQuestions[gameSession.qIndex].a).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</strong>`;
+      document.querySelectorAll('#modalGameBody button').forEach(b=>{ if(!b.closest('#proNextWrap')) b.disabled=true; });
+      const next = document.getElementById('proNextWrap'); if(next) next.classList.remove('hidden');
+    }
+    function checkProTypedAnswer(){ const input=document.getElementById('proAnswer'); if(!input || !input.value.trim()){input?.focus();return;} showProFeedback(ansOK(input.value,currentQuestions[gameSession.qIndex])); }
+    function checkProChoice(btn, answer){ showProFeedback(normalizeProAnswer(answer)===normalizeProAnswer(currentQuestions[gameSession.qIndex].a)); }
+    function checkProGroup(k){ showProFeedback(k===window._gsCorrect); }
+    function checkProTF(answer){ showProFeedback(answer===window._proTFTruth); }
+    function nextProQuestion(){ gameSession.qIndex++; renderProGame(currentGameId); }
+    function showGenericProResult(body){ const total=currentQuestions.length; body.innerHTML=`<div class="text-center w-full"><div class="text-5xl mb-3">🏆</div><h2 class="text-2xl font-black">Tapos na!</h2><p class="mt-2">Score: <strong>${gameSession.score}/${total}</strong></p><button onclick="showStudentForm()" class="mt-4 bg-indigo-600 text-white rounded-xl px-5 py-3 font-bold">I-save ang Score</button></div>`; }
+
+    function renderQuizGame() {
+      const body = document.getElementById('modalGameBody');
+      if (!currentQuestions.length) {
+        body.innerHTML = '<div class="text-center text-sm text-slate-600">Wala pang tanong. Magdagdag muna sa My Activities.</div>';
+        return;
+      }
+      if (gameSession.qIndex >= currentQuestions.length) { showQuizResult(body); return; }
+      const q = currentQuestions[gameSession.qIndex];
+      if (!gameSession.quizChoices[gameSession.qIndex]) {
+        const distractors = [...new Set(currentQuestions.map(x => x.a).filter(a => a !== q.a))];
+        for (let i = distractors.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [distractors[i], distractors[j]] = [distractors[j], distractors[i]]; }
+        gameSession.quizChoices[gameSession.qIndex] = [q.a, ...distractors.slice(0, 3)].sort(() => Math.random() - 0.5);
+      }
+      const choices = gameSession.quizChoices[gameSession.qIndex];
+      const selected = gameSession.quizAnswers[gameSession.qIndex];
+      const answered = selected !== undefined;
+      const correct = answered && selected >= 0 && choices[selected] === q.a;
+      if (quizTimer) { clearInterval(quizTimer); quizTimer = null; }
+      const tl = Number(currentSettings.time) || 0;
+      if (tl > 0 && !answered) {
+        let left = tl; const qi = gameSession.qIndex;
+        quizTimer = setInterval(() => {
+          left--; const el = document.getElementById('gpqTimer'); if (el) el.textContent = '⏱ ' + Math.max(left, 0) + 's';
+          if (left <= 0) { clearInterval(quizTimer); quizTimer = null; if (gameSession.qIndex === qi && gameSession.quizAnswers[qi] === undefined) handleQuizAnswer(-1); }
+        }, 1000);
+      }
+      const hintUsed = !!(gameSession.hints && gameSession.hints[gameSession.qIndex]);
+      const ptsLabel = qPts(q) + ' pts';
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = `
+        <div class="gpq-wrap">
+          <div class="gpq-top"><div><div class="gpq-eyebrow">GuroPlay • Interactive Quiz</div><div class="text-sm font-bold mt-1">${escapeQuizHTML(document.getElementById('currentSubjectTitle').textContent)}</div></div><span class="gpq-count">Tanong ${gameSession.qIndex + 1} sa ${currentQuestions.length} · ${ptsLabel} · ⭐ ${gameSession.points || 0}${tl > 0 && !answered ? ' · <span id="gpqTimer">⏱ ' + tl + 's</span>' : ''}</span></div>
+          <div class="gpq-progress"><div class="gpq-progress-fill" style="width:${(gameSession.qIndex / currentQuestions.length) * 100}%"></div></div>
+          <div class="gpq-chat" aria-live="polite">
+            <div class="gpq-bubble gpq-question">${escapeQuizHTML(q.q)}</div>
+            <div class="gpq-bubble gpq-options"><ol>${choices.map(c => `<li>${escapeQuizHTML(c)}</li>`).join('')}</ol></div>
+            ${!answered && hintUsed && q.hint ? `<div class="gpq-bubble gpq-note" style="background:#fffbe6;border-color:#fde68a">💡 ${escapeQuizHTML(q.hint)}</div>` : ''}
+            ${answered ? `<div class="gpq-bubble gpq-answer">${selected >= 0 ? escapeQuizHTML(choices[selected]) : '⏱ Naubusan ng oras'}</div><div class="gpq-bubble gpq-feedback ${correct ? 'gpq-good' : 'gpq-bad'}">${correct ? '👍' : '👎'}</div><div class="gpq-note">${correct ? 'Tama ang sagot! +' + Math.round(qPts(q) * (hintUsed ? 0.5 : 1)) + ' puntos' : `Hindi iyon ang tamang sagot. Ang tamang sagot ay: ${escapeQuizHTML(q.a)}.`}${q.exp ? '<br>📘 ' + escapeQuizHTML(q.exp) : ''}</div>` : ''}
+          </div>
+          <div class="gpq-controls">${!answered && q.hint && !hintUsed ? `<button class="gpq-num gpq-next" onclick="useQuizHint()" title="Hint (kalahati ng puntos)">💡</button>` : ''}${choices.map((c, i) => `<button class="gpq-num ${selected === i ? 'gpq-selected' : ''}" ${answered ? 'disabled' : ''} onclick="handleQuizAnswer(${i})" aria-label="Pagpipilian ${i + 1}">${i + 1}</button>`).join('')}<button class="gpq-num gpq-next" onclick="advanceQuiz()" title="${gameSession.qIndex === currentQuestions.length - 1 ? 'Tingnan ang resulta' : 'Susunod na tanong'}">${gameSession.qIndex === currentQuestions.length - 1 ? '✓' : '→'}</button></div>
+          <div class="gpq-footer">${answered ? 'Sagot naitala. Pindutin ang → para magpatuloy.' : 'Pumili ng numero para sagutin ang tanong.'}</div>
+        </div>`;
+    }
+
+    function handleQuizAnswer(choiceIndex) {
+      if (gameSession.quizAnswers[gameSession.qIndex] !== undefined) return;
+      const q = currentQuestions[gameSession.qIndex];
+      const choices = gameSession.quizChoices[gameSession.qIndex] || [];
+      gameSession.quizAnswers[gameSession.qIndex] = choiceIndex;
+      if (choiceIndex >= 0 && choices[choiceIndex] === q.a) { gameSession.score++; awardPts(q, gameSession.hints && gameSession.hints[gameSession.qIndex] ? 0.5 : 1); if (typeof confetti === 'function') confetti({ particleCount: 25 }); }
+      renderQuizGame();
+    }
+    let quizTimer = null;
+    function useQuizHint() { if (!gameSession.hints) gameSession.hints = {}; gameSession.hints[gameSession.qIndex] = true; renderQuizGame(); }
+
+    function advanceQuiz() {
+      if (gameSession.quizAnswers[gameSession.qIndex] === undefined) { alert('Pumili muna ng sagot.'); return; }
+      gameSession.qIndex++;
+      renderQuizGame();
+    }
+
+    function showQuizResult(body) {
+      if (quizTimer) { clearInterval(quizTimer); quizTimer = null; }
+      const totalTime = Math.round((Date.now() - gameSession.startTime) / 1000);
+      if (typeof confetti === 'function') confetti();
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = `<div class="gpq-wrap"><div class="gpq-progress"><div class="gpq-progress-fill" style="width:100%"></div></div><div class="gpq-result"><div class="gpq-eyebrow">Challenge complete</div><h2 class="text-xl font-extrabold mt-2">Tapos na ang Quiz! 🎉</h2><div class="gpq-score">${gameSession.score}/${currentQuestions.length}</div><p class="text-sm font-bold text-amber-600 mb-1">⭐ ${gameSession.points || 0} na puntos</p><p class="text-sm text-slate-600 mb-4">${gameSession.score === currentQuestions.length ? 'Perpekto! Napakahusay ng iyong kaalaman.' : gameSession.score >= Math.ceil(currentQuestions.length * .6) ? 'Mahusay! Balikan ang mga tanong para lalo pang gumaling.' : 'Patuloy lang sa pagsasanay. Subukan muli!'}</p><p class="text-xs text-slate-500 mb-3">Oras: ${totalTime} segundo</p><button class="gpq-action" onclick="showStudentForm(document.getElementById('modalGameBody'))">I-save ang Score</button><button class="gpq-action alt" onclick="restartIntegratedQuiz()">Ulitin ang Quiz</button></div></div>`;
+    }
+
+    function restartIntegratedQuiz() {
+      gameSession = { qIndex: 0, score: 0, points: 0, startTime: Date.now(), quizAnswers: [], quizChoices: [], hints: {} };
+      renderQuizGame();
+    }
+
+    function escapeQuizHTML(value) {
+      return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    let matchPairs = [];
+    let matchedPairIds = new Set();
+    let selectedMatchId = null;
+    let matchAttempts = 0;
+
+    function renderMatchGame() {
+      const body = document.getElementById('modalGameBody');
+      if (!currentQuestions || currentQuestions.length === 0) {
+        body.innerHTML = '<div class="p-6 text-center text-slate-600">Walang matching questions na available. Magdagdag muna ng mga tanong at sagot.</div>';
+        return;
+      }
+      matchPairs = currentQuestions.map((item, idx) => ({ id: idx, question: String(item.q ?? ''), answer: String(item.a ?? '') }));
+      matchedPairIds = new Set();
+      selectedMatchId = null;
+      matchAttempts = 0;
+      gameSession.score = 0;
+      gameSession.startTime = Date.now();
+      const answerOrder = [...matchPairs].sort(() => Math.random() - 0.5);
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = `
+        <div class="max-w-5xl mx-auto text-slate-800 space-y-4" id="gpMatchGame">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div><p class="text-xs uppercase tracking-widest font-extrabold text-violet-600">GUROPLAY • MATCH UP</p><h2 class="text-xl font-extrabold mt-1">Itapat ang Tanong sa Tamang Sagot</h2><p class="text-sm text-slate-500 mt-1">I-drag ang tanong papunta sa sagot, o i-click muna ang tanong at pagkatapos ay ang sagot.</p></div>
+            <div class="rounded-xl bg-violet-50 border border-violet-100 px-4 py-2 text-center"><div class="text-xs text-violet-600 font-bold">NAITAPAT</div><div class="text-lg font-extrabold"><span id="gpMatchCount">0</span> / ${matchPairs.length}</div></div>
+          </div>
+          <div class="h-2 rounded-full bg-violet-100 overflow-hidden"><div id="gpMatchProgress" class="h-full bg-violet-600 transition-all" style="width:0%"></div></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section class="rounded-2xl bg-violet-50/70 border border-violet-100 p-3 sm:p-4">
+              <h3 class="font-extrabold text-sm text-violet-800 mb-3"><i class="fa-solid fa-grip mr-2"></i>Mga Tanong</h3>
+              <div class="space-y-2" id="gpMatchQuestions">
+                ${matchPairs.map(pair => `<button type="button" draggable="true" data-match-question="${pair.id}" onclick="chooseMatchQuestion(${pair.id})" ondragstart="startMatchDrag(event, ${pair.id})" class="gp-match-question w-full text-left rounded-xl border border-violet-200 bg-white p-3 sm:p-4 shadow-sm hover:border-violet-400 hover:shadow transition disabled:opacity-60"><span class="inline-flex items-center justify-center rounded-lg bg-violet-100 text-violet-700 font-extrabold text-xs w-7 h-7 mr-2">${pair.id + 1}</span><span class="text-sm font-semibold">${escapeMatchHTML(pair.question)}</span></button>`).join('')}
+              </div>
+            </section>
+            <section class="rounded-2xl bg-sky-50/70 border border-sky-100 p-3 sm:p-4">
+              <h3 class="font-extrabold text-sm text-sky-800 mb-3"><i class="fa-solid fa-bullseye mr-2"></i>Mga Sagot</h3>
+              <div class="space-y-2" id="gpMatchAnswers">
+                ${answerOrder.map(pair => `<div role="button" tabindex="0" data-match-answer="${pair.id}" onclick="chooseMatchAnswer(${pair.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseMatchAnswer(${pair.id})}" ondragover="event.preventDefault();this.classList.add('ring-2','ring-violet-400')" ondragleave="this.classList.remove('ring-2','ring-violet-400')" ondrop="event.preventDefault();this.classList.remove('ring-2','ring-violet-400');dropMatchAnswer(event, ${pair.id})" class="gp-match-answer min-h-[56px] flex items-center w-full text-left rounded-xl border border-sky-200 bg-white p-3 sm:p-4 shadow-sm hover:border-sky-400 transition cursor-pointer"><span class="inline-flex items-center justify-center rounded-lg bg-sky-100 text-sky-700 font-extrabold text-xs w-7 h-7 mr-2 shrink-0"><i class="fa-solid fa-link"></i></span><span class="text-sm font-semibold">${escapeMatchHTML(pair.answer)}</span></div>`).join('')}
+              </div>
+            </section>
+          </div>
+          <div id="gpMatchFeedback" aria-live="polite" class="min-h-10 rounded-xl bg-slate-50 border border-slate-100 p-3 text-sm text-slate-600">Pumili ng tanong at itapat ito sa kaugnay na sagot.</div>
+          <div id="gpMatchResult" class="hidden rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center"></div>
+          <div class="flex flex-wrap justify-center gap-2"><button type="button" onclick="restartMatchGame()" class="rounded-xl border border-violet-200 bg-white px-4 py-2.5 text-sm font-bold text-violet-700 hover:bg-violet-50"><i class="fa-solid fa-rotate-right mr-2"></i>Ulitin</button></div>
+        </div>`;
+    }
+
+    function escapeMatchHTML(value) {
+      return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function chooseMatchQuestion(id) {
+      if (matchedPairIds.has(id)) return;
+      selectedMatchId = id;
+      document.querySelectorAll('[data-match-question]').forEach(el => { const active = Number(el.dataset.matchQuestion) === id; el.classList.toggle('ring-2', active); el.classList.toggle('ring-violet-500', active); el.classList.toggle('border-violet-500', active); });
+      const feedback = document.getElementById('gpMatchFeedback');
+      if (feedback) feedback.textContent = 'Napili ang tanong. I-click ang katumbas nitong sagot o i-drag ang tanong papunta sa sagot.';
+    }
+    function startMatchDrag(event, id) {
+      if (matchedPairIds.has(id)) { event.preventDefault(); return; }
+      event.dataTransfer.setData('text/plain', String(id));
+      event.dataTransfer.effectAllowed = 'move';
+      selectedMatchId = id;
+    }
+    function dropMatchAnswer(event, answerId) {
+      const raw = event.dataTransfer.getData('text/plain');
+      const questionId = raw === '' ? selectedMatchId : Number(raw);
+      if (questionId === null || Number.isNaN(questionId)) return;
+      checkMatchPair(questionId, answerId);
+    }
+    function chooseMatchAnswer(answerId) {
+      if (matchedPairIds.has(answerId)) return;
+      if (selectedMatchId === null) {
+        const feedback = document.getElementById('gpMatchFeedback');
+        if (feedback) feedback.textContent = 'Pumili muna ng tanong sa kaliwang bahagi.';
+        return;
+      }
+      checkMatchPair(selectedMatchId, answerId);
+    }
+    function checkMatchPair(questionId, answerId) {
+      if (matchedPairIds.has(questionId) || matchedPairIds.has(answerId)) return;
+      const feedback = document.getElementById('gpMatchFeedback');
+      matchAttempts++;
+      if (questionId === answerId) {
+        matchedPairIds.add(questionId);
+        gameSession.score = matchedPairIds.size;
+        const qEl = document.querySelector(`[data-match-question="${questionId}"]`);
+        const aEl = document.querySelector(`[data-match-answer="${answerId}"]`);
+        if (qEl) { qEl.disabled = true; qEl.classList.add('!bg-emerald-50','!border-emerald-300','!text-emerald-800'); qEl.innerHTML = '<span class="inline-flex items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-extrabold text-xs w-7 h-7 mr-2"><i class="fa-solid fa-check"></i></span>' + qEl.innerText.replace(/^\d+\s*/, ''); }
+        if (aEl) { aEl.classList.add('!bg-emerald-50','!border-emerald-300','!text-emerald-800','pointer-events-none'); aEl.setAttribute('aria-disabled','true'); aEl.querySelector('span').innerHTML = '<i class="fa-solid fa-check"></i>'; }
+        if (feedback) { feedback.className = 'min-h-10 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm font-bold text-emerald-700'; feedback.textContent = 'Tama! Magkaugnay ang tanong at sagot na ito.'; }
+        if (typeof confetti === 'function') confetti({ particleCount: 18, spread: 45, origin: { y: 0.7 } });
+      } else {
+        if (feedback) { feedback.className = 'min-h-10 rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700'; feedback.textContent = 'Hindi magkatugma. Subukan ang ibang sagot.'; }
+      }
+      selectedMatchId = null;
+      document.querySelectorAll('[data-match-question]').forEach(el => el.classList.remove('ring-2','ring-violet-500','border-violet-500'));
+      const count = document.getElementById('gpMatchCount');
+      const progress = document.getElementById('gpMatchProgress');
+      if (count) count.textContent = matchedPairIds.size;
+      if (progress) progress.style.width = `${matchedPairIds.size / matchPairs.length * 100}%`;
+      if (matchedPairIds.size === matchPairs.length) finishMatchGame();
+    }
+    function finishMatchGame() {
+      const result = document.getElementById('gpMatchResult');
+      if (!result) return;
+      const seconds = Math.round((Date.now() - gameSession.startTime) / 1000);
+      result.classList.remove('hidden');
+      result.innerHTML = `<div class="text-3xl mb-2">🎉</div><h3 class="text-xl font-extrabold text-emerald-800">Tapos na! Kumpleto ang lahat ng pares.</h3><p class="text-sm text-emerald-700 mt-2 mb-4">Score: ${matchedPairIds.size}/${matchPairs.length} · Mga pagtatangka: ${matchAttempts} · Oras: ${seconds} segundo</p><button type="button" onclick="showStudentForm(document.getElementById('modalGameBody'))" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 text-sm"><i class="fa-solid fa-trophy mr-2"></i>I-save ang Score sa Leaderboard</button>`;
+      if (typeof confetti === 'function') confetti({ particleCount: 90, spread: 65 });
+    }
+    function restartMatchGame() {
+      renderMatchGame();
+    }
+
+    let flipCardState = { answered: false, correct: false, submittedAnswer: '' };
+
+    function renderFlipGame(resetCard = true) {
+      const body = document.getElementById('modalGameBody');
+      if (!currentQuestions || currentQuestions.length === 0) {
+        body.innerHTML = '<div class="p-6 text-center text-slate-600">Wala pang flashcards. Magdagdag muna ng tanong at sagot sa Quiz Builder.</div>';
+        return;
+      }
+      if (gameSession.qIndex >= currentQuestions.length) {
+        showStudentForm(body);
+        return;
+      }
+      if (resetCard) flipCardState = { answered: false, correct: false, submittedAnswer: '' };
+      const q = currentQuestions[gameSession.qIndex];
+      const safeQuestion = escapeQuizHTML(q.q);
+      const safeAnswer = escapeQuizHTML(q.a);
+      const safeSubmitted = escapeQuizHTML(flipCardState.submittedAnswer);
+      const cardFlipClass = flipCardState.answered ? 'rotate-y-180' : '';
+      const feedback = !flipCardState.answered ? '' : (flipCardState.correct
+        ? '<div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-emerald-800 font-bold" role="status"><div class="text-3xl mb-1">🎉</div>Tama ang sagot! Mahusay!</div>'
+        : `<div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-rose-800 font-bold" role="status"><div class="text-4xl mb-1">😞</div>Mali ang sagot. Subukan pang pagbutihin sa susunod na card.</div>`);
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = `
+        <div class="w-full max-w-xl mx-auto text-center space-y-4">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-500"><span>FLASHCARDS</span><span>Card ${gameSession.qIndex + 1} sa ${currentQuestions.length}</span></div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 transition-all" style="width:${(gameSession.qIndex / currentQuestions.length) * 100}%"></div></div>
+          <div class="perspective w-full h-48 sm:h-56">
+            <div class="preserve-3d relative w-full h-full rounded-2xl shadow-xl transition-transform duration-500 ${cardFlipClass}" aria-live="polite">
+              <div class="backface-hidden absolute inset-0 bg-indigo-600 text-white rounded-2xl flex flex-col items-center justify-center p-6 font-bold"><span class="text-xs uppercase tracking-widest opacity-75 mb-3">Tanong</span><span class="text-lg">${safeQuestion}</span></div>
+              <div class="backface-hidden absolute inset-0 bg-emerald-600 text-white rounded-2xl flex flex-col items-center justify-center p-6 font-bold rotate-y-180"><span class="text-xs uppercase tracking-widest opacity-75 mb-3">Tamang Sagot</span><span class="text-lg">${safeAnswer}</span></div>
+            </div>
+          </div>
+          ${!flipCardState.answered ? `
+            <form onsubmit="event.preventDefault(); checkFlipAnswer();" class="space-y-3">
+              <label for="flipAnswerInput" class="block text-sm font-bold text-slate-700">Ano ang sagot mo?</label>
+              <input id="flipAnswerInput" type="text" autocomplete="off" placeholder="I-type ang iyong sagot dito..." class="w-full border-2 border-slate-200 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-3 text-center" required />
+              <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl">Suriin at I-flip ang Card</button>
+            </form>
+            <p class="text-xs text-slate-500">Hindi pa maipapakita ang sagot hangga't hindi mo naipapasok ang iyong sagot.</p>
+          ` : `
+            <div class="text-sm text-slate-600">Ang sagot mo: <strong>${safeSubmitted || '(walang sagot)'}</strong></div>
+            ${feedback}
+            <div class="flex items-center justify-center gap-2 text-sm font-bold text-slate-600"><span>Puntos:</span><span class="text-indigo-700">${gameSession.score} / ${gameSession.qIndex + 1}</span></div>
+            <button type="button" onclick="nextFlipCard()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl">${gameSession.qIndex === currentQuestions.length - 1 ? 'Tingnan ang Resulta' : 'Susunod na Card'} <i class="fa-solid fa-arrow-right ml-1"></i></button>
+          `}
+        </div>
+      `;
+      if (flipCardState.answered && flipCardState.correct && typeof confetti === 'function') confetti({ particleCount: 55, spread: 60 });
+    }
+
+    function checkFlipAnswer() {
+      if (flipCardState.answered) return;
+      const input = document.getElementById('flipAnswerInput');
+      if (!input) return;
+      const submitted = input.value.trim();
+      if (!submitted) { input.focus(); return; }
+      const q = currentQuestions[gameSession.qIndex];
+      const normalize = normalizeProAnswer;
+      flipCardState.submittedAnswer = submitted;
+      flipCardState.correct = ansOK(submitted, q);
+      flipCardState.answered = true;
+      if (flipCardState.correct) { gameSession.score++; awardPts(q); }
+      renderFlipGame(false);
+    }
+
+    function nextFlipCard() {
+      if (!flipCardState.answered) return;
+      gameSession.qIndex++;
+      renderFlipGame(true);
+    }
+
+    let wheelIsSpinning = false;
+    let wheelRotation = 0;
+    let wheelSelectedQuestion = null;
+    let wheelAnswerShown = false;
+    let wheelRemainingQuestions = [];
+    let wheelRoundChecked = false;
+    let wheelSpinTimer = null;
+
+    function renderWheelGame() {
+      const body = document.getElementById('modalGameBody');
+      wheelIsSpinning = false;
+      wheelRotation = 0;
+      wheelSelectedQuestion = null;
+      wheelAnswerShown = false;
+      wheelRoundChecked = false;
+      wheelRemainingQuestions = (currentQuestions || []).map((q, index) => ({ ...q, _wheelId: index }));
+      gameSession.score = 0;
+      gameSession.startTime = gameSession.startTime || Date.now();
+      if (!wheelRemainingQuestions.length) {
+        body.innerHTML = '<div class="text-center text-sm text-slate-600 p-6">Wala pang tanong. Magdagdag muna ng mga tanong sa My Activities.</div>';
+        return;
+      }
+      renderWheelRoundUI(true);
+    }
+
+    function renderWheelRoundUI(initial = false) {
+      const body = document.getElementById('modalGameBody');
+      if (!body) return;
+      if (!wheelRemainingQuestions.length) {
+        const totalTime = Math.round((Date.now() - gameSession.startTime) / 1000);
+        body.innerHTML = `
+          <div class="text-center space-y-4 w-full max-w-sm mx-auto py-4">
+            <div class="text-5xl">🏆</div>
+            <h3 class="text-2xl font-extrabold text-slate-800">Natapos mo ang lahat ng tanong!</h3>
+            <p class="text-sm text-slate-600">Puntos: <strong class="text-indigo-600 text-lg">${currentGameId === 'mole' ? gameSession.score + ' pts' : gameSession.score + ' / ' + (currentGameId === 'wordsearch' && wordSearchState ? wordSearchState.words.length : currentGameId === 'match' ? matchPairs.length : getMaxScore())}</strong> | Oras: <strong>${currentGameId === 'wordsearch' ? formatWordSearchTime(totalTime) : currentGameId === 'mole' ? formatElapsed(totalTime) : totalTime + 's'}</strong></p>
+            <p class="text-xs text-slate-500">Nawala na sa roleta ang lahat ng tanong na nasagutan.</p>
+            <button onclick="showStudentForm(document.getElementById('modalGameBody'))" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-3 rounded-xl">I-save ang Score sa Leaderboard</button>
+          </div>`;
+        if (typeof confetti === 'function') confetti({ particleCount: 90, spread: 75 });
+        return;
+      }
+      const colors = ['#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c','#db2777','#4f46e5'];
+      const count = wheelRemainingQuestions.length;
+      wheelRotation = 0;
+      const slices = wheelRemainingQuestions.map((_, i) => `${colors[i % colors.length]} ${(i * 100 / count)}% ${((i + 1) * 100 / count)}%`).join(', ');
+      const labels = wheelRemainingQuestions.map((q, i) => {
+        const angle = (360 / count) * i + (180 / count);
+        return `<span class="absolute text-white font-extrabold text-xs drop-shadow" style="left:50%;top:50%;transform:translate(-50%,-50%) rotate(${angle}deg) translateY(-${Math.min(100, 112 / Math.max(1, count / 8))}px) rotate(-${angle}deg)">${i + 1}</span>`;
+      }).join('');
+      body.innerHTML = `
+        <div class="w-full text-center space-y-4 py-2">
+          <p class="text-sm text-slate-600">Paikutin ang roleta para pumili ng tanong. Kapag nasagot at nasuri na, aalis ang tanong na iyon sa roleta.</p>
+          <div class="flex justify-center gap-4 text-xs font-bold text-slate-600"><span>Natitirang tanong: <strong class="text-indigo-700">${count}</strong></span><span>Puntos: <strong class="text-emerald-700">${gameSession.score}</strong></span></div>
+          <div class="relative mx-auto w-64 h-64 max-w-full">
+            <div class="absolute -top-2 left-1/2 -translate-x-1/2 z-20 text-amber-500 text-3xl leading-none"><i class="fa-solid fa-caret-down"></i></div>
+            <div id="wheelBox" class="relative w-full h-full rounded-full border-8 border-white shadow-xl overflow-hidden" style="background: conic-gradient(${slices}); transition: transform 4s cubic-bezier(.12,.72,.12,1);">
+              ${labels}<div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white border-4 border-amber-400 shadow flex items-center justify-center text-purple-700"><i class="fa-solid fa-star"></i></div>
+            </div>
+          </div>
+          <p id="wheelResultText" aria-live="polite" class="text-sm font-bold text-slate-700 bg-slate-50 rounded-xl p-3">${initial ? 'Handa ka na? I-click ang “Paikutin ang Roleta.”' : 'Handa na sa susunod na tanong?'}</p>
+          <div id="wheelAnswerArea" class="hidden space-y-3 text-left bg-slate-50 rounded-xl p-4">
+            <label for="wheelAnswerInput" class="block text-sm font-bold text-slate-700">I-type ang iyong sagot bago makita ang tamang sagot:</label>
+            <input id="wheelAnswerInput" type="text" autocomplete="off" placeholder="Ilagay ang sagot dito..." class="w-full border border-slate-300 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400" onkeydown="if(event.key==='Enter') checkWheelAnswer()">
+            <button id="wheelCheckBtn" onclick="checkWheelAnswer()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl text-sm">Suriin ang Sagot</button>
+            <div id="wheelFeedback" aria-live="polite" class="hidden text-center rounded-xl p-3 font-bold"></div>
+          </div>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button id="spinWheelBtn" onclick="spinWheel()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-xl text-sm"><i class="fa-solid fa-rotate mr-2"></i>${initial ? 'Paikutin ang Roleta' : 'Paikutin Muli'}</button>
+            <button id="wheelNextBtn" onclick="spinWheel()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl text-sm">Paikutin Muli <i class="fa-solid fa-arrow-right ml-1"></i></button>
+          </div>
+        </div>`;
+      const spinBtn = document.getElementById('spinWheelBtn');
+      if (!initial && wheelSelectedQuestion && !wheelRoundChecked && spinBtn) spinBtn.classList.add('hidden');
+    }
+
+    function spinWheel() {
+      if (wheelIsSpinning || wheelSelectedQuestion && !wheelRoundChecked || !wheelRemainingQuestions.length) return;
+      const wheel = document.getElementById('wheelBox');
+      const result = document.getElementById('wheelResultText');
+      const spinBtn = document.getElementById('spinWheelBtn');
+      if (!wheel || !result || !spinBtn) return;
+      wheelIsSpinning = true;
+      wheelSelectedQuestion = wheelRemainingQuestions[Math.floor(Math.random() * wheelRemainingQuestions.length)];
+      wheelAnswerShown = false;
+      wheelRoundChecked = false;
+      spinBtn.disabled = true;
+      spinBtn.classList.add('opacity-50','cursor-not-allowed');
+      spinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Umiikot...';
+      result.textContent = 'Umiikot ang roleta...';
+      const wIdx = wheelRemainingQuestions.indexOf(wheelSelectedQuestion), wN = wheelRemainingQuestions.length;
+      const wCenter = (wIdx + 0.5) * 360 / wN, wJitter = (Math.random() - 0.5) * (360 / wN) * 0.7;
+      const wCurrent = ((wheelRotation % 360) + 360) % 360;
+      wheelRotation += 1440 + ((((360 - wCenter - wJitter - wCurrent) % 360) + 360) % 360);
+      wheel.style.transform = `rotate(${wheelRotation}deg)`;
+      wheelSpinTimer = window.setTimeout(() => {
+        wheelIsSpinning = false;
+        result.innerHTML = `🎯 <strong>Tanong:</strong> ${escapeWheelText(wheelSelectedQuestion.q)}`;
+        document.getElementById('wheelAnswerArea')?.classList.remove('hidden');
+        document.getElementById('wheelAnswerInput')?.focus();
+        spinBtn.classList.add('hidden');
+        spinBtn.disabled = false;
+        spinBtn.classList.remove('opacity-50','cursor-not-allowed');
+        spinBtn.innerHTML = '<i class="fa-solid fa-rotate mr-2"></i>Paikutin Muli';
+      }, 4100);
+    }
+
+    function checkWheelAnswer() {
+      if (!wheelSelectedQuestion || wheelRoundChecked) return;
+      const input = document.getElementById('wheelAnswerInput');
+      const feedback = document.getElementById('wheelFeedback');
+      const checkBtn = document.getElementById('wheelCheckBtn');
+      const result = document.getElementById('wheelResultText');
+      if (!input || !feedback) return;
+      const submitted = input.value.trim();
+      if (!submitted) { input.focus(); return; }
+      const normalize = normalizeProAnswer;
+      const correct = ansOK(submitted, wheelSelectedQuestion);
+      wheelRoundChecked = true;
+      wheelAnswerShown = true;
+      if (correct) { gameSession.score++; awardPts(wheelSelectedQuestion); }
+      feedback.classList.remove('hidden');
+      feedback.className = `text-center rounded-xl p-3 font-bold ${correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+      feedback.innerHTML = correct
+        ? '🎉 <span class="text-lg">Tama ang sagot! Mahusay!</span>'
+        : `😞 <span class="text-lg">Mali ang sagot.</span><br><span class="text-sm font-semibold">Tamang sagot: ${escapeWheelText(wheelSelectedQuestion.a)}</span>`;
+      if (result) result.innerHTML = `🎯 <strong>Tanong:</strong> ${escapeWheelText(wheelSelectedQuestion.q)}<br><span class="mt-2 inline-block text-emerald-700">📘 <strong>Tamang sagot:</strong> ${escapeWheelText(wheelSelectedQuestion.a)}</span>`;
+      input.disabled = true;
+      if (checkBtn) checkBtn.classList.add('hidden');
+      // Remove this question only after the student's answer has been checked.
+      wheelRemainingQuestions = wheelRemainingQuestions.filter(q => q._wheelId !== wheelSelectedQuestion._wheelId);
+      if (correct && typeof confetti === 'function') confetti({ particleCount: 70, spread: 65 });
+      const spinBtn = document.getElementById('spinWheelBtn');
+      const nextBtn = document.getElementById('wheelNextBtn');
+      if (spinBtn) spinBtn.classList.add('hidden');
+      if (nextBtn) {
+        nextBtn.classList.remove('hidden');
+        nextBtn.textContent = wheelRemainingQuestions.length ? 'Paikutin Muli' : 'Tingnan ang Resulta';
+        nextBtn.onclick = () => {
+          // Rebuild the wheel after the answered question is removed, then wait
+          // for the student to press the visible spin button for the next round.
+          wheelSelectedQuestion = null;
+          wheelAnswerShown = false;
+          wheelRoundChecked = false;
+          renderWheelRoundUI(false);
+        };
+      }
+    }
+
+    function escapeWheelText(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    let unscrambleState = { answered: false, correct: false, submittedAnswer: '', scrambled: '' };
+
+    function renderUnscrambleGame(reset = true) {
+      const body = document.getElementById('modalGameBody');
+      if (!currentQuestions || currentQuestions.length === 0) {
+        body.innerHTML = '<div class="p-6 text-center text-slate-600">Wala pang mga tanong. Magdagdag muna sa Quiz Builder.</div>';
+        return;
+      }
+      if (gameSession.qIndex >= currentQuestions.length) { showStudentForm(body); return; }
+      if (reset) {
+        unscrambleState = { answered: false, correct: false, submittedAnswer: '', scrambled: '' };
+        const answer = String(currentQuestions[gameSession.qIndex].a ?? '');
+        const chars = Array.from(answer);
+        // Shuffle letters, but avoid displaying the unchanged answer when possible.
+        for (let tries = 0; tries < 8; tries++) {
+          const shuffled = [...chars].sort(() => Math.random() - 0.5);
+          if (shuffled.join('').toLocaleLowerCase() !== answer.toLocaleLowerCase() || chars.length < 2) {
+            unscrambleState.scrambled = shuffled.join(' ');
+            break;
+          }
+        }
+        if (!unscrambleState.scrambled) unscrambleState.scrambled = [...chars].reverse().join(' ');
+      }
+      const q = currentQuestions[gameSession.qIndex];
+      const safeQuestion = escapeQuizHTML(q.q);
+      const safeAnswer = escapeQuizHTML(q.a);
+      const safeScrambled = escapeQuizHTML(unscrambleState.scrambled);
+      const safeSubmitted = escapeQuizHTML(unscrambleState.submittedAnswer);
+      const feedback = !unscrambleState.answered ? '' : (unscrambleState.correct
+        ? '<div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-emerald-800 font-bold" role="status"><div class="text-3xl mb-1">🎉</div>Tama ang sagot! Mahusay!</div>'
+        : `<div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-rose-800 font-bold" role="status"><div class="text-4xl mb-1">😞</div>Mali ang sagot. Ang tamang sagot ay: <strong>${safeAnswer}</strong></div>`);
+      body.className = 'p-4 sm:p-6 overflow-y-auto flex-1 min-h-[350px] block';
+      body.innerHTML = `
+        <div class="w-full max-w-xl mx-auto text-center space-y-4">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-500"><span>UNSCRAMBLE LETTERS</span><span>Tanong ${gameSession.qIndex + 1} sa ${currentQuestions.length}</span></div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-rose-500 transition-all" style="width:${(gameSession.qIndex / currentQuestions.length) * 100}%"></div></div>
+          <div class="rounded-2xl bg-rose-600 text-white p-5 shadow-lg"><div class="text-xs uppercase tracking-widest opacity-80 mb-2">Tanong</div><div class="text-lg font-extrabold">${safeQuestion}</div></div>
+          <div class="text-xs font-bold uppercase tracking-widest text-slate-500">Ayusin ang mga titik</div>
+          <div class="text-xl sm:text-2xl font-mono tracking-widest bg-slate-100 p-4 rounded-xl text-indigo-700 font-extrabold" aria-label="Magulong mga titik">${safeScrambled}</div>
+          ${!unscrambleState.answered ? `
+            <form onsubmit="event.preventDefault(); checkUnscramble();" class="space-y-3">
+              <label for="unscrambleInput" class="block text-sm font-bold text-slate-700">Ano ang tamang salita o sagot?</label>
+              <input type="text" id="unscrambleInput" autocomplete="off" placeholder="I-type ang sagot dito..." class="border-2 border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl px-4 py-3 text-center w-full" required>
+              <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-3 rounded-xl">Suriin at Ipakita ang Sagot</button>
+            </form>
+            <p class="text-xs text-slate-500">Hindi lalabas ang feedback o button na Susunod hangga't hindi nasusuri ang sagot.</p>
+          ` : `
+            <div class="text-sm text-slate-600">Ang sagot mo: <strong>${safeSubmitted || '(walang sagot)'}</strong></div>
+            ${feedback}
+            <div class="flex items-center justify-center gap-2 text-sm font-bold text-slate-600"><span>Puntos:</span><span class="text-rose-700">${gameSession.score} / ${gameSession.qIndex + 1}</span></div>
+            <button type="button" onclick="nextUnscramble()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl">${gameSession.qIndex === currentQuestions.length - 1 ? 'Tingnan ang Resulta' : 'Susunod na Tanong'} <i class="fa-solid fa-arrow-right ml-1"></i></button>
+          `}
+        </div>`;
+      if (unscrambleState.answered && unscrambleState.correct && typeof confetti === 'function') confetti({ particleCount: 55, spread: 60 });
+    }
+
+    function checkUnscramble() {
+      if (unscrambleState.answered) return;
+      const input = document.getElementById('unscrambleInput');
+      if (!input) return;
+      const submitted = input.value.trim();
+      if (!submitted) { input.focus(); return; }
+      const q = currentQuestions[gameSession.qIndex];
+      const normalize = normalizeProAnswer;
+      unscrambleState.submittedAnswer = submitted;
+      unscrambleState.correct = ansOK(submitted, q);
+      unscrambleState.answered = true;
+      if (unscrambleState.correct) { gameSession.score++; awardPts(q); }
+      renderUnscrambleGame(false);
+    }
+
+    function nextUnscramble() {
+      if (!unscrambleState.answered) return;
+      gameSession.qIndex++;
+      renderUnscrambleGame(true);
+    }
+
+    function showStudentForm(body) {
+      body = body || document.getElementById('modalGameBody');
+      if (!body) return;
+      const totalTime = currentGameId === 'wordsearch' && wordSearchState?.completedAt ? Math.floor((wordSearchState.completedAt - gameSession.startTime) / 1000) : Math.round((Date.now() - gameSession.startTime) / 1000);
+      confetti();
+      body.innerHTML = `
+        <div class="text-center space-y-4 w-full max-w-sm mx-auto">
+          <h3 class="text-2xl font-extrabold text-slate-800">Tapos na ang Laro! 🎉</h3>
+          <p class="text-sm text-slate-600">Puntos: <strong class="text-indigo-600 text-lg">${currentGameId === 'mole' ? gameSession.score + ' pts' : gameSession.score + ' / ' + (currentGameId === 'wordsearch' && wordSearchState ? wordSearchState.words.length : currentGameId === 'match' ? matchPairs.length : getMaxScore())}</strong> | Oras: <strong>${currentGameId === 'wordsearch' ? formatWordSearchTime(totalTime) : currentGameId === 'mole' ? formatElapsed(totalTime) : totalTime + 's'}</strong></p>
+          ${gameSession.points ? `<p class="text-sm font-bold text-amber-600">⭐ Kabuuang puntos: ${gameSession.points}</p>` : ''}
+          <div class="space-y-2 text-left">
+            <label class="block text-xs font-bold text-slate-600">I-record ang iyong pangalan sa Leaderboard:</label>
+            <input type="text" id="studentName" placeholder="Pangalan at Apelyido" class="w-full border p-2 rounded-lg text-sm outline-none">
+            <input type="text" id="studentSection" placeholder="Baitang at Seksyon (hal. 9-Rizal)" class="w-full border p-2 rounded-lg text-sm outline-none">
+          </div>
+          <button onclick="submitScoreToLeaderboard(${totalTime})" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-sm shadow">
+            Save Score to Leaderboard
+          </button>
+        </div>
+      `;
+    }
+
+    function submitScoreToLeaderboard(timeInSeconds) {
+      const name = document.getElementById('studentName').value.trim() || 'Anonymous Student';
+      const section = document.getElementById('studentSection').value.trim() || 'G9';
+      const game = GAMES_LIST.find(g => g.id === currentGameId);
+      leaderboardData.push({
+        name, section, score: gameSession.score, points: gameSession.points || 0, time: timeInSeconds,
+        gameId: currentGameId, gameName: game ? game.name : 'Interactive Quiz Engine',
+        maxScore: currentGameId === 'mole' ? gameSession.score : getMaxScore(),
+        lesson: document.getElementById('currentSubjectTitle').innerText,
+        savedAt: Date.now()
+      });
+      leaderboardData.sort(lbCompare);
+      localStorage.setItem('guroplay_leaderboard', JSON.stringify(leaderboardData));
+      const leaderboardFilter = document.getElementById('leaderboardGameFilter');
+      if (leaderboardFilter) { populateLeaderboardFilter(); leaderboardFilter.value = currentGameId; }
+      renderLeaderboard();
+      closeGameModal();
+      switchTab('leaderboard');
+    }
+
+    function populateLeaderboardFilter() {
+      const filter = document.getElementById('leaderboardGameFilter');
+      if (!filter) return;
+      const selected = filter.value || 'all';
+      const categories = [...new Set(leaderboardData.map(item => item.gameId || 'quiz'))];
+      filter.innerHTML = '<option value="">Pumili ng game category</option>' + categories.map(id => {
+        const game = GAMES_LIST.find(g => g.id === id);
+        const label = game ? game.name : (leaderboardData.find(item => (item.gameId || 'quiz') === id)?.gameName || id);
+        return `<option value="${escapeQuizHTML(id)}">${escapeQuizHTML(label)}</option>`;
+      }).join('');
+      if ([...filter.options].some(option => option.value === selected)) filter.value = selected;
+    }
+
+    function renderLeaderboard() {
+      const tbody = document.getElementById('leaderboardTableBody');
+      if (!tbody) return;
+      populateLeaderboardFilter();
+      const lbFilter = document.getElementById('leaderboardGameFilter'); if (lbFilter && !lbFilter.value && leaderboardData.length) lbFilter.value = leaderboardData[0].gameId || 'quiz'; const selectedGame = lbFilter?.value || '';
+      const filtered = leaderboardData.filter(item => selectedGame !== '' && (item.gameId || 'quiz') === selectedGame)
+        .sort(lbCompare);
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Wala pang score sa napiling game category.</td></tr>`;
+        return;
+      }
+      filtered.forEach((item, index) => {
+        const rankBadge = index === 0 ? '🥇 1st' : index === 1 ? '🥈 2nd' : index === 2 ? '🥉 3rd' : `#${index + 1}`;
+        const game = GAMES_LIST.find(g => g.id === (item.gameId || 'quiz'));
+        const gameName = game ? game.name : (item.gameName || 'Interactive Quiz Engine');
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-bold text-xs">${rankBadge}</td>
+            <td class="p-3 font-semibold text-slate-800">${escapeQuizHTML(item.name || 'Anonymous Student')}</td>
+            <td class="p-3 text-slate-500 text-xs">${escapeQuizHTML(item.section || 'G9')}</td>
+            <td class="p-3 text-slate-500 text-xs">${escapeQuizHTML(gameName)}<div class="text-[10px] text-slate-400">${escapeQuizHTML(item.lesson || '')}</div></td>
+            <td class="p-3 font-extrabold text-indigo-600">${item.gameId === 'mole' ? `${item.score} pts` : `${item.score} / ${item.maxScore || currentQuestions.length} pts`}${item.points ? `<div class="text-[10px] text-amber-600 font-bold">⭐ ${item.points} puntos</div>` : ''}</td>
+            <td class="p-3 text-slate-500 text-xs">${item.time} segundo</td>
+          </tr>`;
+      });
+    }
+
+    function clearLeaderboard() {
+      if (confirm('Sigurado ka bang gusto mong i-clear ang leaderboard?')) {
+        leaderboardData = [];
+        localStorage.removeItem('guroplay_leaderboard');
+        renderLeaderboard();
+      }
+    }
+
+    function switchTab(tab) {
+      ['games','leaderboard','activities','templates','builder'].forEach(t => { const sec = document.getElementById('section-' + t); if (sec) sec.classList.toggle('hidden', tab !== t); });
+      ['games','leaderboard','activities'].forEach(t => {
+        const b = document.getElementById('tabBtn-' + t); if (!b) return;
+        const on = tab === t || (t === 'activities' && (tab === 'builder' || tab === 'templates'));
+        b.classList.toggle('bg-indigo-50', on); b.classList.toggle('text-indigo-700', on);
+        b.classList.toggle('text-slate-600', !on); b.classList.toggle('hover:bg-slate-50', !on);
+      });
+      const ab = document.getElementById('tabActiveBadge'); if (ab) ab.classList.toggle('hidden', tab !== 'games');
+      if (tab === 'activities') renderActivities();
+      if (tab === 'templates') renderTemplates();
+    }
+
+    function closeGameModal() { if(typeof quizTimer!=='undefined'&&quizTimer){clearInterval(quizTimer);quizTimer=null;} if(globalGameTimer){clearInterval(globalGameTimer);globalGameTimer=null;} if(wordSearchTimerInterval){clearInterval(wordSearchTimerInterval);wordSearchTimerInterval=null;} if(moleInterval){clearInterval(moleInterval);moleInterval=null;} if(moleClockInterval){clearInterval(moleClockInterval);moleClockInterval=null;} if(molePopInterval){clearInterval(molePopInterval);molePopInterval=null;} if(wheelSpinTimer){clearTimeout(wheelSpinTimer);wheelSpinTimer=null;} if(moleState && moleState.started){moleState.ended=true;moleState.started=false;} document.getElementById('gameModal').classList.add('hidden'); }
+    function openPaywallModal() { fillPlanModal(); document.getElementById('paywallModal').classList.remove('hidden'); }
+    function fillPlanModal() {
+      const money = '₱' + PLAN.price;
+      document.getElementById('planPriceLabel').textContent = money;
+      document.getElementById('planPriceInline').textContent = money;
+      document.getElementById('gcashNumLabel').textContent = PLAN.gcashNumber;
+      document.getElementById('gcashNameLabel').textContent = PLAN.gcashName;
+      const qr = document.getElementById('gcashQrBox');
+      if (PLAN.qrImage) { document.getElementById('gcashQrImg').src = PLAN.qrImage; qr.classList.remove('hidden'); } else qr.classList.add('hidden');
+      const st = document.getElementById('planStatusLine'), e = proExpiry();
+      st.textContent = isProUser ? (e ? 'PRO ka na hanggang ' + new Date(e).toLocaleDateString('fil-PH', {year:'numeric',month:'long',day:'numeric'}) + ' · mag-renew para madagdagan ang 30 araw' : 'Aktibo ang PRO account mo.') : (e && e < Date.now() ? 'Nag-expire na ang PRO mo. Mag-renew para magpatuloy.' : 'Billed monthly · kanselahin anumang oras');
+      const pend = JSON.parse(localStorage.getItem('guroplay_pay_requests') || '[]').filter(r => r.status === 'pending').slice(-1)[0], box = document.getElementById('payPending');
+      if (pend) { box.classList.remove('hidden'); box.innerHTML = '⏳ <b>Naghihintay ng verification:</b> Ref. ' + gpEscape(pend.ref) + ' · ' + new Date(pend.at).toLocaleString('fil-PH') + '. Ilagay sa Hakbang 3 ang license key kapag natanggap mo na.'; } else box.classList.add('hidden');
+    }
+    function copyGcashNumber() {
+      const raw = PLAN.gcashNumber.replace(/\s+/g, ''), btn = document.getElementById('gcashCopyBtn');
+      const done = () => { btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Nakopya!'; setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy mr-1"></i>Kopyahin', 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(raw).then(done).catch(() => prompt('Kopyahin ang numero:', raw)); else prompt('Kopyahin ang numero:', raw);
+    }
+    function submitPaymentRequest() {
+      const name = document.getElementById('payName').value.trim(), contact = document.getElementById('payContact').value.trim(), ref = document.getElementById('payRef').value.replace(/\s+/g, ''), msg = document.getElementById('payMsg');
+      const bad = t => { msg.className = 'text-xs font-semibold text-rose-600'; msg.textContent = t; };
+      if (!name) return bad('Ilagay ang pangalan mo.');
+      if (!contact) return bad('Maglagay ng email o mobile number para maipadala ang key.');
+      if (!/^\d{10,15}$/.test(ref)) return bad('Ang GCash Reference No. ay dapat 10–15 na numero lamang.');
+      const list = JSON.parse(localStorage.getItem('guroplay_pay_requests') || '[]');
+      if (list.some(r => r.ref === ref)) return bad('Naipadala na ang reference number na ito.');
+      list.push({ name, contact, ref, amount: PLAN.price, at: Date.now(), status: 'pending' });
+      localStorage.setItem('guroplay_pay_requests', JSON.stringify(list));
+      msg.className = 'text-xs font-semibold text-emerald-700';
+      msg.textContent = '✅ Natanggap ang payment details. Ipadala ang screenshot ng resibo' + (PLAN.contact ? ' sa ' + PLAN.contact : ' sa admin') + ' para mabilis ang verification.';
+      fillPlanModal();
+    }
+    function closePaywallModal() { document.getElementById('paywallModal').classList.add('hidden'); }
+    function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+    function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+    function loginTeacher() {
+      const email = document.getElementById('teacherEmail').value || 'Teacher';
+      document.getElementById('accountLabel').innerText = email;
+      closeAuthModal();
+    }
+    function activateLicenseKey() {
+      const entered = document.getElementById('licenseKeyInput').value.trim().toUpperCase();
+      if (PLAN.licenseKeys.map(k => k.toUpperCase()).includes(entered)) {
+        const base = Math.max(Date.now(), proActive() ? proExpiry() : 0);
+        localStorage.setItem('guroplay_pro_expiry', String(base + PLAN.days * 86400000));
+        const reqs = JSON.parse(localStorage.getItem('guroplay_pay_requests') || '[]'); reqs.forEach(r => { if (r.status === 'pending') r.status = 'activated'; }); localStorage.setItem('guroplay_pay_requests', JSON.stringify(reqs));
+        isProUser = true; localStorage.setItem('guroplay_pro', 'true');
+        updateUserStatusUI(); closePaywallModal(); confetti(); alert('Na-activate na ang PRO account! Balido hanggang ' + new Date(proExpiry()).toLocaleDateString('fil-PH', {year:'numeric',month:'long',day:'numeric'}) + '.');
+        renderGamesGrid();
+      } else alert('Mali ang License Key');
+    }
+    function builderCardHTML(n){
+      return `<div class="bq-card bg-slate-50 p-3 rounded-xl border space-y-2">
+        <div class="flex items-center justify-between"><span class="bq-num text-xs font-black text-indigo-600">Tanong ${n}</span><button type="button" onclick="removeBuilderQuestion(this)" class="text-[11px] font-bold text-rose-600 hover:text-rose-800">🗑 Alisin</button></div>
+        <input type="text" placeholder="Tanong" class="w-full border p-2 rounded text-xs q-input">
+        <input type="text" placeholder="Tamang Sagot" class="w-full border p-2 rounded text-xs a-input">
+        <input type="text" placeholder="Dagdag na tinatanggap na sagot (paghiwalayin ng kuwit, hal. Inflation, Pagtaas ng presyo)" class="w-full border p-2 rounded text-xs alt-input">
+        <div class="grid grid-cols-1 sm:grid-cols-[110px_1fr] gap-2">
+          <input type="number" min="1" max="1000" placeholder="Puntos" class="border p-2 rounded text-xs pts-input" title="Puntos ng tanong na ito">
+          <input type="text" placeholder="Hint / Pahiwatig (opsyonal)" class="border p-2 rounded text-xs hint-input">
+        </div>
+        <input type="text" placeholder="Paliwanag pagkatapos sumagot (opsyonal)" class="w-full border p-2 rounded text-xs exp-input">
+      </div>`;
+    }
+    function renumberBuilder(){ document.querySelectorAll('#builderQuestionsContainer .bq-card .bq-num').forEach((e,i)=>e.textContent='Tanong '+(i+1)); }
+    function addBuilderQuestion() {
+      const container = document.getElementById('builderQuestionsContainer');
+      const div = document.createElement('div');
+      div.innerHTML = builderCardHTML(container.children.length + 1);
+      container.appendChild(div.firstElementChild);
+    }
+    function removeBuilderQuestion(btn){
+      const c=document.getElementById('builderQuestionsContainer');
+      if(c.children.length<=1){alert('Kailangan ng kahit isang tanong.');return;}
+      btn.closest('.bq-card').remove(); renumberBuilder();
+    }
+    // My Activities: history of the teacher's saved interactive activities (question sets playable in any game).
+    let activities = [], currentActivityId = null, editingActivityId = null;
+    function loadActivities() {
+      try { const raw = JSON.parse(localStorage.getItem('guroplay_activities') || '[]'); activities = Array.isArray(raw) ? raw : []; } catch (e) { activities = []; }
+      if (!activities.length) {
+        try { const old = JSON.parse(localStorage.getItem('guroplay_custom') || 'null');
+          if (Array.isArray(old) && old.length) { const t = Date.now(); activities = [{ id: 'a' + t.toString(36), title: 'Custom Quiz (naunang gawa)', questions: old, createdAt: t, updatedAt: t, plays: 0, lastGame: null, lastPlayedAt: null }]; saveActivities(); }
+        } catch (e) {}
+      }
+    }
+    function saveActivities() { try { localStorage.setItem('guroplay_activities', JSON.stringify(activities)); } catch (e) {} }
+    function fmtActivityDate(ts) { try { return new Date(ts).toLocaleDateString('fil-PH', { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return ''; } }
+    function renderActivities() {
+      const box = document.getElementById('activitiesList'), badge = document.getElementById('activityCountBadge');
+      if (badge) badge.textContent = activities.length;
+      if (!box) return;
+      if (!activities.length) {
+        box.className = 'block';
+        box.innerHTML = '<div class="text-center py-10"><div class="text-5xl mb-3">📂</div><p class="font-bold text-slate-700">Wala ka pang naka-save na activity.</p><p class="text-sm text-slate-500 mt-1">Gumawa ng sarili mong mga tanong para magamit sa lahat ng laro.</p><button onclick="newActivity()" class="mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-sm">+ Gumawa ng Activity</button></div>';
+        return;
+      }
+      box.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
+      box.innerHTML = activities.map(a => {
+        const active = a.id === currentActivityId;
+        return `<div class="rounded-xl border ${active ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-slate-50'} p-4 flex flex-col gap-2">
+          <div class="flex items-start justify-between gap-2"><h3 class="font-extrabold text-slate-800 leading-tight">${gpEscape(a.title)}</h3>${active ? '<span class="shrink-0 text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">GINAGAMIT</span>' : ''}</div>
+          <p class="text-xs font-bold text-indigo-700">${(() => { const g = GAMES_LIST.find(x => x.id === a.gameId); return g ? '<i class="fa-solid ' + g.icon + ' mr-1"></i>' + g.name : 'Lahat ng laro'; })()}</p>
+          <p class="text-xs text-slate-500">${a.questions.length} na tanong · ⭐ ${a.questions.reduce((t, x) => t + (Number(x.pts) || (a.settings && a.settings.points) || 10), 0)} kabuuang puntos · ginawa noong ${fmtActivityDate(a.createdAt)}</p>
+          ${a.settings ? `<p class="text-xs text-slate-500">${a.settings.category ? '📚 ' + gpEscape(a.settings.category) + ' · ' : ''}${{easy:'Madali',medium:'Katamtaman',hard:'Mahirap'}[a.settings.difficulty] || ''}${a.settings.time ? ' · ⏱ ' + a.settings.time + 's/tanong' : ''}${a.settings.shuffle ? ' · 🔀' : ''}</p>` : ''}
+          <p class="text-xs text-slate-500">${a.plays ? '🎮 Nilaro nang ' + a.plays + ' beses · huli: ' + gpEscape(a.lastGame || '') : 'Hindi pa nalalaro'}</p>
+          <div class="flex flex-wrap gap-2 mt-1">
+            <button onclick="playActivity('${a.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg">▶ Laruin</button>
+            <button onclick="editActivity('${a.id}')" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">✏️ I-edit</button>
+            <button onclick="deleteActivity('${a.id}')" class="bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-lg">🗑 Burahin</button>
+          </div></div>`;
+      }).join('');
+    }
+    function setBuilderRows(list) {
+      const c = document.getElementById('builderQuestionsContainer'); c.innerHTML = '';
+      (list.length ? list : [{ q: '', a: '' }]).forEach((it, i) => {
+        const wrap = document.createElement('div'); wrap.innerHTML = builderCardHTML(i + 1);
+        const div = wrap.firstElementChild;
+        div.querySelector('.q-input').value = it.q || ''; div.querySelector('.a-input').value = it.a || '';
+        div.querySelector('.alt-input').value = (it.alts || []).join(', ');
+        div.querySelector('.pts-input').value = it.pts || '';
+        div.querySelector('.hint-input').value = it.hint || '';
+        div.querySelector('.exp-input').value = it.exp || '';
+        c.appendChild(div);
+      });
+    }
+    function setBuilderSettings(st){
+      st = st || {};
+      document.getElementById('setPoints').value = st.points || 10;
+      document.getElementById('setTime').value = st.time || 0;
+      document.getElementById('setCategory').value = st.category || '';
+      document.getElementById('setDifficulty').value = st.difficulty || 'medium';
+      document.getElementById('setShuffle').checked = !!st.shuffle;
+    }
+    function newActivity() { templateMode = 'new'; setBuilderSettings(null); switchTab('templates'); }
+    const TEMPLATE_DESC = {
+      quiz: 'Multiple choice na tanong na may agarang resulta.',
+      match: 'Pagtapat-tapatin ang tanong at tamang sagot.',
+      flip: 'Flashcards na ipinapaikot para makita ang sagot.',
+      wheel: 'Paikutin ang gulong at sagutin ang lalabas na tanong.',
+      unscramble: 'Ayusin ang pinaghalo-halong letra ng sagot.',
+      wordsearch: 'Hanapin ang mga sagot sa loob ng grid ng letra.',
+      mole: 'Paluin ang hayop na may tamang sagot bago maubos ang oras.',
+      box: 'Buksan ang mystery box at sagutin ang tanong sa loob.',
+      balloonpop: 'Hulaan ang salita bago pumutok ang lahat ng lobo.',
+      jeopardy: 'Pumili ng puntos at sagutin ang clue sa game show board.',
+      millionaire: 'Sagutin ang sunod-sunod na tanong, may 3 lifeline.',
+      groupsort: 'Ayusin ang mga sagot sa tamang kategorya.',
+      masteryquest: 'Mag-type ng sagot, may hints, review round at study sheet.',
+      speedtf: 'Mabilis na True or False na may takbuhan ng oras.',
+      anagram: 'Buuin ang tamang salita mula sa pinaghalong letra.'
+    };
+    let templateMode = 'new', builderTemplate = null;
+    function renderTemplates() {
+      const grid = document.getElementById('templatesGrid'), banner = document.getElementById('templatesBanner');
+      if (!grid) return;
+      const freeCount = GAMES_LIST.filter(g => !g.isPro).length;
+      if (banner) banner.innerHTML = isProUser
+        ? `<div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold px-4 py-3"><i class="fa-solid fa-crown text-amber-500 mr-1"></i> PRO Account: bukas na ang lahat ng ${GAMES_LIST.length} template.</div>`
+        : `<div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3 flex flex-wrap items-center justify-between gap-2"><span><strong>Free Account:</strong> ${freeCount} template lang ang magagamit. I-upgrade sa PRO para ma-unlock ang lahat ng ${GAMES_LIST.length}.</span><button onclick="openPaywallModal()" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-crown mr-1"></i> Upgrade to PRO</button></div>`;
+      grid.innerHTML = GAMES_LIST.map(g => {
+        const locked = g.isPro && !isProUser;
+        return `<button onclick="selectTemplate('${g.id}')" class="text-left rounded-xl border ${locked ? 'border-slate-200 bg-slate-50' : 'border-indigo-100 bg-white hover:border-indigo-400 hover:shadow'} p-4 flex gap-3 items-start transition relative">
+          <div class="w-11 h-11 shrink-0 ${g.bg} text-white rounded-lg grid place-items-center text-lg shadow ${locked ? 'opacity-50' : ''}"><i class="fa-solid ${g.icon}"></i></div>
+          <div class="min-w-0"><h3 class="font-bold text-sm ${locked ? 'text-slate-500' : 'text-slate-800'}">${g.name}</h3><p class="text-xs text-slate-500 mt-1">${TEMPLATE_DESC[g.id] || ''}</p>
+          <span class="inline-block mt-2 text-[10px] font-extrabold px-2 py-0.5 rounded text-white ${locked ? 'bg-amber-600' : g.isPro ? 'bg-emerald-600' : 'bg-indigo-500'}">${locked ? '🔒 PRO' : g.isPro ? 'UNLOCKED' : 'FREE'}</span></div></button>`;
+      }).join('');
+    }
+    function selectTemplate(id) {
+      const g = GAMES_LIST.find(x => x.id === id); if (!g) return;
+      if (g.isPro && !isProUser) { openPaywallModal(); return; }
+      if (templateMode !== 'change') { editingActivityId = null; document.getElementById('builderTitle').value = ''; setBuilderRows([]); setBuilderSettings(null); }
+      builderTemplate = id; templateMode = 'new';
+      updateBuilderTemplateBar(); switchTab('builder');
+    }
+    function cancelTemplatePick() { const back = templateMode === 'change' ? 'builder' : 'activities'; templateMode = 'new'; switchTab(back); }
+    function changeTemplate() { templateMode = 'change'; switchTab('templates'); }
+    function updateBuilderTemplateBar() {
+      const el = document.getElementById('builderTemplateBar'); if (!el) return;
+      const g = GAMES_LIST.find(x => x.id === builderTemplate);
+      el.innerHTML = `<div class="flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3"><div class="flex items-center gap-3">${g ? `<div class="w-9 h-9 ${g.bg} text-white rounded-lg grid place-items-center"><i class="fa-solid ${g.icon}"></i></div>` : '<div class="w-9 h-9 bg-slate-400 text-white rounded-lg grid place-items-center"><i class="fa-solid fa-shapes"></i></div>'}<div><p class="text-[10px] font-black text-indigo-600">GAME TEMPLATE</p><p class="font-bold text-sm text-slate-800">${g ? g.name : 'Walang napiling template (lahat ng laro)'}</p></div></div><button onclick="changeTemplate()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800">Palitan</button></div>`;
+    }
+    function editActivity(id) {
+      const a = activities.find(x => x.id === id); if (!a) return;
+      editingActivityId = id; builderTemplate = a.gameId || null; templateMode = 'new'; document.getElementById('builderTitle').value = a.title; setBuilderRows(a.questions); setBuilderSettings(a.settings); updateBuilderTemplateBar(); switchTab('builder');
+    }
+    function applyActivity(id) {
+      const a = activities.find(x => x.id === id); if (!a) return;
+      currentQuestions = a.questions.map(x => ({ ...x })); currentActivityId = id; currentSettings = Object.assign({ points: 10, time: 0, category: '', difficulty: 'medium', shuffle: false }, a.settings || {});
+      registerCustomPreset(currentQuestions, a.title, id);
+      document.getElementById('presetSelector').value = 'custom';
+      document.getElementById('currentSubjectTitle').innerText = a.title;
+      document.getElementById('questionCountLabel').innerText = `${currentQuestions.length} na katanungan`;
+      renderGamesGrid(); renderActivities();
+    }
+    function playActivity(id) {
+      const a = activities.find(x => x.id === id); if (!a) return;
+      applyActivity(id); switchTab('games');
+      const g = a.gameId && GAMES_LIST.find(x => x.id === a.gameId);
+      if (g) launchGame(g.id, g.isPro && !isProUser);
+    }
+    function deleteActivity(id) {
+      const a = activities.find(x => x.id === id); if (!a) return;
+      if (!confirm('Burahin ang activity na "' + a.title + '"?')) return;
+      activities = activities.filter(x => x.id !== id); saveActivities();
+      if (currentActivityId === id) currentActivityId = null;
+      renderActivities();
+    }
+    function trackActivityPlay(gameId) {
+      const a = activities.find(x => x.id === currentActivityId); if (!a) return;
+      const g = GAMES_LIST.find(x => x.id === gameId);
+      a.plays = (a.plays || 0) + 1; a.lastGame = g ? g.name : gameId; a.lastPlayedAt = Date.now();
+      saveActivities(); renderActivities();
+    }
+    function saveCustomQuestions() {
+      const questions = [...document.querySelectorAll('#builderQuestionsContainer .bq-card')].map(card => {
+        const item = {
+          q: card.querySelector('.q-input')?.value.trim() || '',
+          a: card.querySelector('.a-input')?.value.trim() || ''
+        };
+        const alts = (card.querySelector('.alt-input')?.value || '').split(',').map(x => x.trim()).filter(Boolean);
+        const pts = parseInt(card.querySelector('.pts-input')?.value, 10);
+        const hint = card.querySelector('.hint-input')?.value.trim();
+        const exp = card.querySelector('.exp-input')?.value.trim();
+        if (alts.length) item.alts = alts;
+        if (pts > 0) item.pts = Math.min(pts, 1000);
+        if (hint) item.hint = hint;
+        if (exp) item.exp = exp;
+        return item;
+      }).filter(item => item.q && item.a);
+      const settings = {
+        points: Math.max(1, parseInt(document.getElementById('setPoints').value, 10) || 10),
+        time: Math.max(0, parseInt(document.getElementById('setTime').value, 10) || 0),
+        category: document.getElementById('setCategory').value.trim(),
+        difficulty: document.getElementById('setDifficulty').value,
+        shuffle: document.getElementById('setShuffle').checked
+      };
+      if (!questions.length) { alert('Maglagay muna ng kahit isang tanong at tamang sagot.'); return; }
+      const now = Date.now();
+      let title = document.getElementById('builderTitle').value.trim() || ('Activity ' + fmtActivityDate(now));
+      let act = editingActivityId && activities.find(x => x.id === editingActivityId);
+      if (act) { act.title = title; act.questions = questions; act.settings = settings; act.updatedAt = now; act.gameId = builderTemplate; }
+      else { act = { id: 'a' + now.toString(36) + Math.random().toString(36).slice(2, 5), title, gameId: builderTemplate, questions, settings, createdAt: now, updatedAt: now, plays: 0, lastGame: null, lastPlayedAt: null }; activities.unshift(act); }
+      editingActivityId = null; saveActivities();
+      applyActivity(act.id);
+      alert('💾 Na-save sa My Activities' + (builderTemplate ? ' gamit ang template na ' + (GAMES_LIST.find(x => x.id === builderTemplate) || {}).name : '') + '!');
+      switchTab('games');
+    }
+  </script>
+</body>
+</html>
