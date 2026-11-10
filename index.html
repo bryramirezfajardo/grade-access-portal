@@ -284,7 +284,7 @@
 
                 if (!currentStudent.grades) currentStudent.grades = {};
                 if (data.success && data.scoresData) {
-                    currentStudent.grades[term] = parseRowToGrades(data.scoresData);
+                    currentStudent.grades[term] = parseRowToGrades(data.scoresData, data.hpsData);
                 } else {
                     currentStudent.grades[term] = null;
                 }
@@ -301,58 +301,81 @@
         // Array index ay zero-based: A=0, B=1, C=2, ... AA=26.
         // PAALALA: ang mga HPS (max) sa ibaba ay para sa class record na
         // may WW = 15/25/15 (55), PT = 20/50 (70), ST = 25/25/50.
-        function parseRowToGrades(row) {
+        // Ang HPS (highest possible score) ay kinukuha na mula mismo sa HPS row
+        // ng sheet (hpsData), kaya tama para sa bawat section at term.
+        function parseRowToGrades(row, hps) {
             if (!row || !Array.isArray(row) || row.length < 27) return null;
+            if (!hps || !Array.isArray(hps) || hps.length < 27) return null;
 
-            const isBlank = (idx) =>
-                row[idx] === undefined || row[idx] === null || String(row[idx]).trim() === "";
+            const blankIn = (arr, idx) =>
+                arr[idx] === undefined || arr[idx] === null || String(arr[idx]).trim() === "";
 
-            const getNum = (idx) => {
-                if (isBlank(idx)) return 0;
-                const n = Number(String(row[idx]).replace(/,/g, "").trim());
+            const numIn = (arr, idx) => {
+                if (blankIn(arr, idx)) return 0;
+                const n = Number(String(arr[idx]).replace(/,/g, "").trim());
                 return Number.isFinite(n) ? n : 0;
             };
 
+            const getNum = (idx) => numIn(row, idx);
+
             // null kapag blangko, para hindi magmukhang 0 ang hindi pa naipapasok
-            const getScore = (idx) => (isBlank(idx) ? null : getNum(idx));
+            const getScore = (idx) => (blankIn(row, idx) ? null : numIn(row, idx));
 
             const getFormatted = (idx) => {
-                if (isBlank(idx)) return "0.00";
+                if (blankIn(row, idx)) return "0.00";
                 const n = Number(String(row[idx]).replace(/,/g, "").trim());
                 return Number.isFinite(n) ? n.toFixed(2) : "0.00";
             };
 
+            // Kunin lang ang mga column na may HPS (> 0) sa HPS row
+            const slots = (start, end) => {
+                const out = [];
+                for (let i = start; i <= end; i++) if (numIn(hps, i) > 0) out.push(i);
+                return out;
+            };
+            const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+
+            const wwIdx = slots(2, 6);    // C-G
+            const ptIdx = slots(10, 12);  // K-M
+            const wwMax = wwIdx.map((i) => numIn(hps, i));
+            const ptMax = ptIdx.map((i) => numIn(hps, i));
+
+            const st1Max = numIn(hps, 16) || 25;  // Q
+            const st2Max = numIn(hps, 17) || 25;  // R
+            const teMax  = numIn(hps, 18) || 50;  // S
+
             return {
                 subject: "Araling Panlipunan",
                 ww: {
-                    max: [15, 25, 15],
-                    scores: [getScore(2), getScore(3), getScore(4)], // C, D, E
-                    totalRaw: getNum(7),                             // H (Total)
-                    totalMax: 55,
-                    ps: getFormatted(8),                             // I
-                    ws: getFormatted(9),                             // J
+                    max: wwMax,
+                    scores: wwIdx.map(getScore),
+                    totalRaw: getNum(7),                              // H (Total)
+                    totalMax: numIn(hps, 7) || sum(wwMax),
+                    ps: getFormatted(8),                              // I
+                    ws: getFormatted(9),                              // J
                     weightPct: 20
                 },
                 pt: {
-                    max: [20, 50],
-                    scores: [getScore(10), getScore(11)],            // K, L
-                    totalRaw: getNum(13),                            // N (Total)
-                    totalMax: 70,
-                    ps: getFormatted(14),                            // O
-                    ws: getFormatted(15),                            // P
+                    max: ptMax,
+                    scores: ptIdx.map(getScore),
+                    totalRaw: getNum(13),                             // N (Total)
+                    totalMax: numIn(hps, 13) || sum(ptMax),
+                    ps: getFormatted(14),                             // O
+                    ws: getFormatted(15),                             // P
                     weightPct: 50
                 },
                 st: {
-                    st1: { score: getScore(16), max: 25 },           // Q
-                    st2: { score: getScore(17), max: 25 },           // R
-                    te:  { score: getScore(18), max: 50 },           // S
-                    totalScoreSum: getNum(22),                       // W
-                    ps: getFormatted(23),                            // X
-                    ws: getFormatted(24),                            // Y
+                    st1: { score: getScore(16), max: st1Max },        // Q
+                    st2: { score: getScore(17), max: st2Max },        // R
+                    te:  { score: getScore(18), max: teMax },         // S
+                    totalScoreSum: getNum(22),                        // W
+                    totalMax: numIn(hps, 22) || (st1Max + st2Max + teMax),
+                    ps: getFormatted(23),                             // X
+                    ws: getFormatted(24),                             // Y
                     weightPct: 30
                 },
-                initialGrade: getFormatted(25),                      // Z
-                termGrade: getNum(26)                                // AA
+                initialGrade: getFormatted(25),                       // Z
+                termGrade: getNum(26)                                 // AA
             };
         }
 
@@ -495,7 +518,7 @@
                             </div>
                         </div>
                         <div class="mt-4 pt-3 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs space-y-1">
-                            <div class="flex justify-between"><span class="text-slate-500">Total Score Sum:</span> <span class="font-bold text-slate-800">${st.totalScoreSum} / 100</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Total Score Sum:</span> <span class="font-bold text-slate-800">${st.totalScoreSum} / ${st.totalMax}</span></div>
                             <div class="flex justify-between"><span class="text-slate-500">Percentage Score (PS):</span> <span class="font-bold text-slate-800">${st.ps}%</span></div>
                         </div>
                     </div>
