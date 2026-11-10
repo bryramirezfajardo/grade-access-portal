@@ -283,15 +283,31 @@
                 const data = await res.json();
 
                 if (!currentStudent.grades) currentStudent.grades = {};
+                if (!currentStudent.gradeErrors) currentStudent.gradeErrors = {};
+                currentStudent.gradeErrors[term] = null;
+
                 if (data.success && data.scoresData) {
-                    currentStudent.grades[term] = parseRowToGrades(data.scoresData, data.hpsData);
+                    const parsed = parseRowToGrades(data.scoresData, data.hpsData);
+                    currentStudent.grades[term] = parsed;
+                    if (!parsed) {
+                        if (data.hpsData === undefined) {
+                            currentStudent.gradeErrors[term] = "Walang hpsData sa sagot ng server: luma pa ang naka-deploy na Apps Script. I-redeploy ang bagong Code.gs gamit ang Version: New version.";
+                        } else if (data.hpsData === null) {
+                            currentStudent.gradeErrors[term] = "Hindi nahanap ng Apps Script ang HPS row sa worksheet na '" + (data.sheetName || "") + "' (row ng estudyante: " + data.matchedRow + "). Dapat may row na 'MALE' o 'FEMALE' sa Column B na may numerong Total sa Column H.";
+                        } else {
+                            currentStudent.gradeErrors[term] = "Kulang ang bilang ng column sa row (kailangan ang A hanggang AA).";
+                        }
+                    }
                 } else {
                     currentStudent.grades[term] = null;
+                    currentStudent.gradeErrors[term] = (data.message || "Walang nakuhang marka mula sa server.") + (data.hint ? " " + data.hint : "");
                 }
             } catch (err) {
                 console.log("Error fetching grades: ", err);
                 if (!currentStudent.grades) currentStudent.grades = {};
+                if (!currentStudent.gradeErrors) currentStudent.gradeErrors = {};
                 currentStudent.grades[term] = null;
+                currentStudent.gradeErrors[term] = "Error sa koneksyon sa database: " + err.message;
             }
 
             renderBreakdown();
@@ -410,6 +426,7 @@
                         <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
                         <p class="font-medium text-slate-600">Wala pang nakatalang marka para sa Term/Quarter na ito.</p>
                         <p class="text-xs text-slate-400 mt-1">Lalabas dito ang iyong bawat Written Work, Performance Task, at Exam kapag na-encode na ng guro.</p>
+                        ${(currentStudent && currentStudent.gradeErrors && currentStudent.gradeErrors[activeQuarter]) ? `<p class="text-xs text-rose-500 mt-4 max-w-xl mx-auto bg-rose-50 border border-rose-100 rounded-lg p-3 text-left"><i class="fa-solid fa-triangle-exclamation"></i> Detalye ng problema: ${currentStudent.gradeErrors[activeQuarter]}</p>` : ''}
                     </div>`;
                 return;
             }
