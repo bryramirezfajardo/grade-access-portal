@@ -1,547 +1,1157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Grade Access Portal</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#172554">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>SafeSpace | Student Reporting Portal</title>
+
+<style>
+:root {
+  --navy:#172554; --blue:#2563eb; --light:#eff6ff;
+  --bg:#f4f7fb; --text:#1e293b; --muted:#64748b;
+  --border:#e2e8f0; --red:#dc2626; --green:#15803d;
+  --white:#ffffff; --shadow:0 8px 30px rgba(15,23,42,.07);
+}
+* {box-sizing:border-box}
+body {margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea {font:inherit}
+button {cursor:pointer}
+.hidden {display:none!important}
+.topbar {background:var(--navy);color:white;padding:17px 5%;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand {display:flex;align-items:center;gap:12px;font-weight:800;font-size:20px}
+.brand-icon {width:42px;height:42px;display:grid;place-items:center;background:#ffffff1c;border-radius:12px;font-size:23px}
+.topbar small {color:#bfdbfe}
+.container {max-width:1050px;margin:35px auto;padding:0 18px}
+.card {background:white;padding:25px;border-radius:17px;box-shadow:var(--shadow);margin-bottom:20px}
+.auth-wrap {max-width:470px;margin:40px auto}
+h1,h2,h3 {margin-top:0}
+h2 {font-size:23px}
+h3 {font-size:17px}
+.subtitle {color:var(--muted);line-height:1.6}
+.tabs {display:flex;gap:8px;margin:20px 0}
+.tab {flex:1;padding:12px;border:1px solid var(--border);background:white;border-radius:9px;font-weight:700;color:var(--muted)}
+.tab.active {background:var(--light);border-color:var(--blue);color:var(--blue)}
+label {display:block;font-size:13px;font-weight:700;margin-bottom:7px}
+.field {margin-bottom:16px}
+input,select,textarea {width:100%;border:1px solid #cbd5e1;padding:12px;border-radius:9px;outline:none;background:white;color:var(--text)}
+input:focus,select:focus,textarea:focus {border-color:var(--blue);box-shadow:0 0 0 3px #2563eb18}
+textarea {min-height:95px;resize:vertical}
+.btn {padding:12px 17px;border:0;border-radius:9px;background:var(--blue);color:white;font-weight:700}
+.btn:hover {filter:brightness(.95)}
+.btn:disabled {opacity:.55;cursor:not-allowed}
+.btn-block {width:100%}
+.btn-secondary {background:#e2e8f0;color:#334155}
+.btn-danger {background:var(--red)}
+.btn-green {background:var(--green)}
+.btn-small {padding:8px 12px;font-size:13px}
+.small {font-size:12px;color:var(--muted)}
+.req {color:var(--red)}
+.notice {background:#eff6ff;border-left:4px solid var(--blue);padding:13px;border-radius:7px;font-size:13px;line-height:1.6;margin-bottom:17px}
+.alert {background:#fef2f2;border:1px solid #fecaca;padding:15px;border-radius:10px;color:#991b1b;margin:15px 0;line-height:1.5}
+.success {background:#f0fdf4;border:1px solid #bbf7d0;padding:14px;color:#166534;border-radius:9px;margin:12px 0}
+.error {background:#fef2f2;border:1px solid #fecaca;padding:14px;color:#991b1b;border-radius:9px;margin:12px 0}
+.section-title {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+.grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:20px}
+.stat {background:white;padding:20px;border-radius:13px;box-shadow:var(--shadow)}
+.stat strong {display:block;font-size:29px;margin-top:8px}
+.stat span {font-size:12px;color:var(--muted)}
+.student-card {border:1px solid var(--border);padding:18px;border-radius:12px;margin:15px 0;background:#fff}
+.student-card h3 {color:var(--navy)}
+.check-row {display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:14px;font-weight:400}
+.check-row input {width:auto;margin-top:3px}
+.check-group {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 14px}
+.check-group .check-row {margin:6px 0}
+.badge {display:inline-block;padding:5px 9px;border-radius:20px;background:#e2e8f0;font-size:11px;font-weight:700}
+.badge-red {background:#fee2e2;color:#991b1b}
+.badge-green {background:#dcfce7;color:#166534}
+.badge-blue {background:#dbeafe;color:#1d4ed8}
+.table-wrap {overflow-x:auto}
+table {width:100%;border-collapse:collapse;min-width:600px}
+th,td {padding:13px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}
+th {background:#f8fafc;color:#475569}
+.list-item {display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:12px;font-size:14px}
+.progress {height:7px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin-top:7px}
+.progress div {height:100%;background:var(--blue)}
+.nav {display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.nav button {border:1px solid var(--border);background:white;border-radius:9px;padding:10px 14px;font-weight:700;color:#475569}
+.nav button.active {background:var(--navy);color:white}
+.temp-box {background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:15px;line-height:1.7;font-size:14px}
+.temp-box code {font-size:18px;font-weight:700;letter-spacing:1px;background:#fef3c7;padding:3px 8px;border-radius:6px}
+footer {text-align:center;color:var(--muted);font-size:12px;padding:30px 10px}
+hr {border:0;border-top:1px solid var(--border);margin:20px 0}
+@media(max-width:700px) {
+  .stats {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid {grid-template-columns:1fr}
+  .check-group {grid-template-columns:1fr}
+  .container {margin:20px auto}
+  .card {padding:19px}
+  .topbar {padding:14px 18px}
+}
+@media(max-width:400px) {
+  .stats {grid-template-columns:1fr 1fr}
+  .stat {padding:14px}
+  .stat strong {font-size:23px}
+}
+</style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
 
-    <!-- Navbar -->
-    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white text-blue-700 p-2 rounded-lg font-bold shadow">
-                    <i class="fa-solid fa-graduation-cap text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-lg leading-tight">Student Grade Access Portal</h1>
-                    <p class="text-xs text-blue-200">DepEd Class Record Breakdown View</p>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2">
-                <button id="navLogoutBtn" onclick="logout()" class="hidden bg-rose-600 hover:bg-rose-500 px-3 py-2 rounded-lg text-sm transition flex items-center space-x-1">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Logout</span>
-                </button>
-            </div>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🛡️</div>
+    <div>SafeSpace<br><small>Student Reporting Portal</small></div>
+  </div>
+  <div class="small" style="color:#dbeafe">GRADE 9 • PERAS</div>
+</header>
+
+<main class="container">
+
+<section id="authScreen" class="auth-wrap">
+  <div class="card">
+    <h2>Welcome to SafeSpace</h2>
+    <p class="subtitle">A confidential reporting space where students can share concerns and experiences safely.</p>
+    <div class="notice">Your submitted report will be accessible to your class adviser. Please provide truthful and accurate information.</div>
+
+    <div class="tabs">
+      <button type="button" class="tab active" id="loginTab" onclick="showAuth('login')">Student Login</button>
+      <button type="button" class="tab" id="registerTab" onclick="showAuth('register')">Register</button>
+    </div>
+
+    <form id="loginForm" onsubmit="studentLogin(event)" novalidate>
+      <div class="field">
+        <label for="loginLRN">12-Digit LRN</label>
+        <input id="loginLRN" inputmode="numeric" maxlength="12" autocomplete="username" placeholder="Enter your LRN">
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter password">
+      </div>
+      <button type="submit" class="btn btn-block" id="loginBtn">Login to SafeSpace</button>
+    </form>
+
+    <form id="registerForm" class="hidden" onsubmit="registerStudent(event)" novalidate>
+      <div class="field">
+        <label for="regName">Full Name</label>
+        <input id="regName" autocomplete="off" placeholder="Enter your complete name">
+        <p class="small">Your name will be verified against the class masterlist.</p>
+      </div>
+      <div class="field">
+        <label for="regLRN">12-Digit LRN</label>
+        <input id="regLRN" maxlength="12" inputmode="numeric" autocomplete="off" placeholder="Enter your LRN">
+      </div>
+      <div class="field">
+        <label for="regBirthday">Birthday</label>
+        <input id="regBirthday" type="date">
+      </div>
+      <div class="field">
+        <label for="regPassword">Create Password</label>
+        <input id="regPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="regConfirm">Confirm Password</label>
+        <input id="regConfirm" type="password" autocomplete="new-password" placeholder="Repeat password">
+      </div>
+      <button type="submit" class="btn btn-block" id="registerBtn">Submit Registration</button>
+    </form>
+    <div id="authMessage" role="alert"></div>
+  </div>
+  <div style="text-align:center;margin-top:20px">
+    <button type="button" class="btn btn-secondary" onclick="showAdminLogin()">Adviser Login</button>
+  </div>
+</section>
+
+<section id="adminLoginScreen" class="auth-wrap hidden">
+  <div class="card">
+    <h2>Adviser Access</h2>
+    <p class="subtitle">Authorized class adviser only.</p>
+    <form onsubmit="adminLogin(event)" novalidate>
+      <div class="field"><label for="adminUsername">Username</label><input id="adminUsername" autocomplete="username"></div>
+      <div class="field"><label for="adminPassword">Administrator Password</label><input id="adminPassword" type="password" autocomplete="current-password"></div>
+      <button type="submit" class="btn btn-block" id="adminLoginBtn">Login as Adviser</button>
+    </form>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:10px" onclick="backToAuth()">Back to Student Portal</button>
+    <div id="adminLoginMessage" role="alert"></div>
+  </div>
+</section>
+
+<section id="studentScreen" class="hidden">
+  <div class="section-title">
+    <div><h2 id="studentWelcome">Hello, Student!</h2><p class="subtitle">You are inside the SafeSpace student portal.</p></div>
+    <button type="button" class="btn btn-secondary" onclick="logout()">Logout</button>
+  </div>
+  <div class="card">
+    <h2>Report a Concern</h2>
+    <p class="subtitle">You may report an incident involving one or more classmates. Each reported student will have a separate incident record.</p>
+    <div class="notice">You may select up to five students in one submission. If you feel unsafe or are in immediate danger, approach a trusted adult or your adviser directly. Do not wait for an online response.</div>
+    <div class="field">
+      <label for="generalNarrative">What happened? (General description) <span class="req">*</span></label>
+      <textarea id="generalNarrative" maxlength="10000" placeholder="Briefly describe your concern or experience..."></textarea>
+    </div>
+    <div class="field">
+      <label for="classmateSearch">Select classmates involved <span class="req">*</span></label>
+      <input id="classmateSearch" placeholder="Search student name..." oninput="renderClassmates()">
+      <div id="classmateList" style="margin-top:10px;max-height:300px;overflow-y:auto"></div>
+      <p class="small" id="selectedCount">0 of 5 students selected</p>
+    </div>
+    <div id="individualDetails"></div>
+    <div class="alert">
+      <label class="check-row" style="color:#991b1b;font-size:14px">
+        <input type="checkbox" id="urgentAlert">
+        <span><strong>URGENT SAFETY ALERT</strong><br>I am currently experiencing a serious safety concern that needs immediate attention from my adviser.</span>
+      </label>
+      <p class="small" style="color:#991b1b">This alert is intended for urgent concerns, not ordinary reports.</p>
+    </div>
+    <button type="button" class="btn btn-block" id="submitReportBtn" onclick="submitIncidentReport()">Submit Confidential Report</button>
+    <div id="reportMessage" role="alert"></div>
+  </div>
+</section>
+
+<section id="changePasswordScreen" class="auth-wrap hidden">
+  <div class="card">
+    <h2>Change Temporary Password</h2>
+    <p class="subtitle">You must change your temporary password before continuing.</p>
+    <form onsubmit="changePassword(event)" novalidate>
+      <div class="field"><label for="oldPassword">Current (Temporary) Password</label><input id="oldPassword" type="password" autocomplete="current-password"></div>
+      <div class="field"><label for="newPassword">New Password</label><input id="newPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+      <div class="field"><label for="confirmNewPassword">Confirm New Password</label><input id="confirmNewPassword" type="password" autocomplete="new-password"></div>
+      <button type="submit" class="btn btn-block" id="changePasswordBtn">Save New Password</button>
+    </form>
+    <div id="changePasswordMessage" role="alert"></div>
+  </div>
+</section>
+
+<section id="adminScreen" class="hidden">
+  <div class="section-title">
+    <div><h2>Adviser Dashboard</h2><p class="subtitle">SafeSpace • Grade 9 PERAS</p></div>
+    <button type="button" class="btn btn-secondary" onclick="logout()">Logout</button>
+  </div>
+  <div class="nav">
+    <button type="button" class="active" data-page="overview" onclick="showAdminPage('overview')">Overview</button>
+    <button type="button" data-page="reports" onclick="showAdminPage('reports')">Incident Reports</button>
+    <button type="button" data-page="registrations" onclick="showAdminPage('registrations')">Registrations</button>
+    <button type="button" data-page="students" onclick="showAdminPage('students')">Students</button>
+  </div>
+  <div id="adminOverview">
+    <div class="stats">
+      <div class="stat"><span>Total Reports</span><strong id="totalReports">0</strong></div>
+      <div class="stat"><span>Urgent Reports</span><strong id="urgentReports" style="color:#dc2626">0</strong></div>
+      <div class="stat"><span>New Reports</span><strong id="newReports">0</strong></div>
+      <div class="stat"><span>Pending Registrations</span><strong id="pendingCount">0</strong></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>Most Reported Students</h3>
+        <p class="small">Number of report entries mentioning each student. This is a monitoring indicator, not a finding of guilt.</p>
+        <div id="mostReported"></div>
+      </div>
+      <div class="card">
+        <h3>Frequent Reporters</h3>
+        <p class="small">Number of submissions made by each student. Frequent reporting may indicate a need for support.</p>
+        <div id="frequentReporters"></div>
+      </div>
+    </div>
+  </div>
+  <div id="adminReports" class="hidden">
+    <div class="card">
+      <div class="section-title"><h3>Incident Reports</h3><button type="button" class="btn btn-secondary" onclick="loadDashboard()">Refresh</button></div>
+      <div class="grid" style="margin-bottom:15px">
+        <input id="reportSearch" placeholder="Search report ID or reporter..." oninput="renderReports()" aria-label="Search reports">
+        <select id="reportFilter" onchange="renderReports()" aria-label="Filter reports">
+          <option value="all">All reports</option>
+          <option value="urgent">Urgent only</option>
+          <option value="Bago">Bago (New)</option>
+          <option value="Sinusuri">Sinusuri (Under Review)</option>
+          <option value="May Aksyon">May Aksyon (Action Taken)</option>
+          <option value="Sarado">Sarado (Closed)</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Report ID</th><th>Submitted</th><th>Reporter</th><th>Students</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="reportsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="adminRegistrations" class="hidden">
+    <div class="card">
+      <div class="section-title"><h3>Student Registration Requests</h3><button type="button" class="btn btn-secondary" onclick="loadPending()">Refresh</button></div>
+      <p class="small">Before approving, confirm in person that the student really made this request.</p>
+      <div id="pendingList"></div>
+    </div>
+  </div>
+  <div id="adminStudents" class="hidden">
+    <div class="card">
+      <div class="section-title"><h3>Student Accounts</h3><button type="button" class="btn btn-secondary" onclick="loadStudents()">Refresh</button></div>
+      <div id="resetResult"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>LRN</th><th>Status</th><th>Last Login</th><th>Action</th></tr></thead>
+          <tbody id="studentsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="reportDetailScreen" class="hidden">
+  <div class="card">
+    <div class="section-title"><h2>Incident Report Details</h2><button type="button" class="btn btn-secondary" onclick="closeReportDetails()">Back</button></div>
+    <div id="reportDetailContent"></div>
+  </div>
+</section>
+
+</main>
+
+<footer><strong>SafeSpace</strong><br>Confidential Student Reporting Portal<br>Grade 9 – PERAS</footer>
+
+<script>
+/*********************************************************
+ * CONFIGURATION
+ *********************************************************/
+const API_URL = 'https://script.google.com/macros/s/AKfycbzUMNilz2ZOUE1nNemX_Q6eD7VUIlwiVJ1mBat1hIpzcQyDjUQA50Rjl-3UMvw_JkAm/exec';
+
+const MAX_SELECT = 5;
+const MAX_FILES = 3;
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_ORIGINAL_BYTES = 25 * 1024 * 1024;   // lalaliitin ang mga larawan bago i-upload
+const MAX_TOTAL_BYTES = 12 * 1024 * 1024;
+const IDLE_LIMIT_MS = { student: 10 * 60 * 1000, admin: 20 * 60 * 1000 };
+
+// Dapat eksaktong tugma sa OPTIONS sa Code.gs
+const TYPES = ['Verbal Bullying','Physical Bullying','Social / Relational Bullying','Cyberbullying','Other'];
+const LOCATIONS = ['Classroom','School Grounds','Hallway','Canteen','Comfort Room','Online / Social Media','Outside School','Other'];
+const FREQUENCIES = ['Once','Twice','Three to five times','More than five times','Happens repeatedly'];
+const CONNECTIONS = ['I personally experienced it','I witnessed it','Someone shared it with me'];
+const STATUSES = ['Bago','Sinusuri','May Aksyon','Sarado'];
+const STATUS_LABELS = {'Bago':'New','Sinusuri':'Under Review','May Aksyon':'Action Taken','Sarado':'Closed'};
+
+let token = '';
+let currentRole = '';
+let currentStudentName = '';
+let classmates = [];
+let selectedStudents = [];
+let dashboardData = null;
+let cardSeq = 0;
+let lastActivity = Date.now();
+
+const $ = id => document.getElementById(id);
+
+/*********************************************************
+ * API
+ *********************************************************/
+async function api(action, data = {}, timeoutMs = 45000) {
+  if (!API_URL.startsWith('https://script.google.com/macros/s/')) {
+    throw new Error('Please configure the Apps Script Web App URL first.');
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let result;
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action, token, ...data}),
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error('Unable to connect to the server.');
+    result = await response.json();
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('The server took too long to respond. Please check your connection and try again.');
+    if (err instanceof SyntaxError) throw new Error('Unexpected server response. Please try again.');
+    if (err instanceof TypeError) throw new Error('Unable to connect to the server. Please check your internet connection.');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!result.success) {
+    if (result.code === 'SESSION' && token) sessionExpired(result.message);
+    const error = new Error(result.message || 'Request failed.');
+    error.code = result.code;
+    throw error;
+  }
+  return result.data;
+}
+
+/*********************************************************
+ * HELPERS
+ *********************************************************/
+function showOnly(id) {
+  ['authScreen','adminLoginScreen','studentScreen','adminScreen','changePasswordScreen','reportDetailScreen']
+    .forEach(screen => $(screen).classList.toggle('hidden', screen !== id));
+  window.scrollTo(0, 0);
+}
+function message(id, text, success = false) {
+  const element = $(id);
+  element.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = success ? 'success' : 'error';
+  div.textContent = text;
+  element.appendChild(div);
+  element.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+}
+function clearMessage(id) { $(id).innerHTML = ''; }
+function setLoading(button, loading, text = 'Please wait...') {
+  if (!button) return;
+  if (loading) {
+    if (!button.dataset.original) button.dataset.original = button.textContent;
+    button.disabled = true;
+    button.textContent = text;
+  } else {
+    button.disabled = false;
+    if (button.dataset.original) button.textContent = button.dataset.original;
+    delete button.dataset.original;
+  }
+}
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? String(value) : d.toLocaleString();
+}
+function todayLocal() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+function statusLabel(s) { return STATUS_LABELS[s] ? s + ' (' + STATUS_LABELS[s] + ')' : String(s || ''); }
+function reportError(error) { if (error.code !== 'SESSION') alert(error.message); }
+
+/*********************************************************
+ * SESSION / IDLE HANDLING
+ *********************************************************/
+function resetState() {
+  token = ''; currentRole = ''; currentStudentName = '';
+  classmates = []; selectedStudents = []; dashboardData = null;
+  document.querySelectorAll('input, textarea').forEach(el => {
+    if (el.type === 'checkbox') el.checked = false; else el.value = '';
+  });
+  ['classmateList','individualDetails','reportMessage','authMessage','adminLoginMessage',
+   'changePasswordMessage','resetResult','pendingList','reportsTable','studentsTable',
+   'reportDetailContent'].forEach(id => { const el = $(id); if (el) el.innerHTML = ''; });
+  $('selectedCount').textContent = '0 of 5 students selected';
+}
+function goToLogin(note) {
+  resetState();
+  showOnly('authScreen');
+  showAuth('login');
+  if (note) message('authMessage', note);
+}
+function sessionExpired(note) { goToLogin(note || 'Session expired. Please log in again.'); }
+async function logout() {
+  try { if (token) await api('logout'); } catch (e) {}
+  goToLogin();
+}
+function forceLogout(note) {
+  if (token) { api('logout').catch(() => {}); }
+  goToLogin(note);
+}
+['click','keydown','touchstart','mousemove','scroll'].forEach(evt =>
+  document.addEventListener(evt, () => { lastActivity = Date.now(); }, {passive: true}));
+function checkIdle() {
+  if (!token || !currentRole) return;
+  if (Date.now() - lastActivity > IDLE_LIMIT_MS[currentRole]) {
+    forceLogout('You were logged out because of inactivity.');
+  }
+}
+setInterval(checkIdle, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkIdle(); });
+
+/*********************************************************
+ * AUTH SCREENS
+ *********************************************************/
+function showAuth(type) {
+  const login = type === 'login';
+  $('loginForm').classList.toggle('hidden', !login);
+  $('registerForm').classList.toggle('hidden', login);
+  $('loginTab').classList.toggle('active', login);
+  $('registerTab').classList.toggle('active', !login);
+  clearMessage('authMessage');
+}
+function showAdminLogin() { showOnly('adminLoginScreen'); clearMessage('adminLoginMessage'); }
+function backToAuth() { showOnly('authScreen'); showAuth('login'); }
+
+// Numero lang ang tinatanggap sa LRN
+['loginLRN','regLRN'].forEach(id =>
+  $(id).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12); }));
+$('regBirthday').max = todayLocal();
+
+/*********************************************************
+ * REGISTRATION
+ *********************************************************/
+async function registerStudent(e) {
+  if (e) e.preventDefault();
+  const name = $('regName').value.trim();
+  const lrn = $('regLRN').value.trim();
+  const birthday = $('regBirthday').value;
+  const password = $('regPassword').value;
+  const confirm = $('regConfirm').value;
+
+  if (!name || !/^\d{12}$/.test(lrn) || !birthday) return message('authMessage', 'Please complete all registration fields (LRN must be 12 digits).');
+  if (password.length < 8) return message('authMessage', 'Password must contain at least 8 characters.');
+  if (password === lrn) return message('authMessage', 'Password must be different from your LRN.');
+  if (password !== confirm) return message('authMessage', 'Passwords do not match.');
+
+  const btn = $('registerBtn');
+  setLoading(btn, true, 'Submitting...');
+  try {
+    await api('register', {fullName: name, lrn, birthday, password});
+    ['regName','regLRN','regBirthday','regPassword','regConfirm'].forEach(id => $(id).value = '');
+    message('authMessage', 'Registration submitted successfully. Wait for your adviser to approve your account.', true);
+  } catch (error) {
+    message('authMessage', error.message);
+  } finally { setLoading(btn, false); }
+}
+
+/*********************************************************
+ * STUDENT LOGIN
+ *********************************************************/
+async function studentLogin(e) {
+  if (e) e.preventDefault();
+  const lrn = $('loginLRN').value.trim();
+  const password = $('loginPassword').value;
+  if (!/^\d{12}$/.test(lrn)) return message('authMessage', 'Enter your 12-digit LRN.');
+  if (!password) return message('authMessage', 'Enter your password.');
+
+  const btn = $('loginBtn');
+  setLoading(btn, true, 'Logging in...');
+  try {
+    const result = await api('studentLogin', {lrn, password});
+    token = result.token; currentRole = 'student'; currentStudentName = result.name;
+    lastActivity = Date.now();
+    $('loginPassword').value = '';
+    if (result.mustChangePassword) {
+      clearMessage('changePasswordMessage');
+      showOnly('changePasswordScreen');
+      return;
+    }
+    await openStudentDashboard();
+  } catch (error) { message('authMessage', error.message); }
+  finally { setLoading(btn, false); }
+}
+
+async function openStudentDashboard() {
+  showOnly('studentScreen');
+  $('studentWelcome').textContent = 'Hello, ' + currentStudentName + '!';
+  selectedStudents = [];
+  $('individualDetails').innerHTML = '';
+  try {
+    classmates = await api('getClassmates');
+    renderClassmates();
+  } catch (error) { message('reportMessage', error.message); }
+}
+
+async function changePassword(e) {
+  if (e) e.preventDefault();
+  const oldPassword = $('oldPassword').value;
+  const newPassword = $('newPassword').value;
+  const confirm = $('confirmNewPassword').value;
+  if (!oldPassword) return message('changePasswordMessage', 'Enter your current (temporary) password.');
+  if (newPassword.length < 8) return message('changePasswordMessage', 'New password must have at least 8 characters.');
+  if (newPassword !== confirm) return message('changePasswordMessage', 'New passwords do not match.');
+
+  const btn = $('changePasswordBtn');
+  setLoading(btn, true, 'Saving...');
+  try {
+    await api('changePassword', {oldPassword, newPassword});
+    goToLogin();
+    message('authMessage', 'Password changed. Please log in with your new password.', true);
+  } catch (error) { message('changePasswordMessage', error.message); }
+  finally { setLoading(btn, false); }
+}
+
+/*********************************************************
+ * ADVISER LOGIN
+ *********************************************************/
+async function adminLogin(e) {
+  if (e) e.preventDefault();
+  const username = $('adminUsername').value.trim();
+  const password = $('adminPassword').value;
+  if (!username || !password) return message('adminLoginMessage', 'Enter your administrator credentials.');
+
+  const btn = $('adminLoginBtn');
+  setLoading(btn, true, 'Logging in...');
+  try {
+    const result = await api('staffLogin', {username, password});
+    token = result.token; currentRole = 'admin'; lastActivity = Date.now();
+    $('adminPassword').value = '';
+    showOnly('adminScreen');
+    showAdminPage('overview');
+    await loadDashboard();
+    await loadPending();
+  } catch (error) { message('adminLoginMessage', error.message); }
+  finally { setLoading(btn, false); }
+}
+
+/*********************************************************
+ * CLASSMATE SELECTION  (studentId lang ang ginagamit, hindi LRN)
+ *********************************************************/
+function renderClassmates() {
+  const list = $('classmateList');
+  list.innerHTML = '';
+  const search = $('classmateSearch').value.toLowerCase().trim();
+  const filtered = classmates.filter(s => String(s.name || '').toLowerCase().includes(search));
+  const full = selectedStudents.length >= MAX_SELECT;
+
+  if (!filtered.length) {
+    list.textContent = classmates.length ? 'No matching students.' : 'No classmates available.';
+  }
+
+  filtered.forEach(student => {
+    const checked = selectedStudents.includes(student.studentId);
+    const label = document.createElement('label');
+    label.className = 'check-row';
+    label.style.padding = '9px';
+    label.style.margin = '0';
+    label.style.borderBottom = '1px solid #e2e8f0';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = checked;
+    checkbox.disabled = !checked && full;
+    checkbox.dataset.sid = student.studentId;
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        if (selectedStudents.length >= MAX_SELECT) { checkbox.checked = false; return; }
+        selectedStudents.push(student.studentId);
+      } else {
+        selectedStudents = selectedStudents.filter(id => id !== student.studentId);
+      }
+      updateSelectedStudents();
+    });
+
+    const span = document.createElement('span');
+    span.textContent = student.name;
+    label.append(checkbox, span);
+    list.appendChild(label);
+  });
+  updateSelectedStudents();
+}
+
+function updateSelectedStudents() {
+  $('selectedCount').textContent = selectedStudents.length + ' of ' + MAX_SELECT + ' students selected';
+  const full = selectedStudents.length >= MAX_SELECT;
+  document.querySelectorAll('#classmateList input[type=checkbox]').forEach(cb => {
+    cb.disabled = !cb.checked && full;
+  });
+  renderIndividualDetails();
+}
+
+/*********************************************************
+ * INDIVIDUAL INCIDENT FORMS
+ * Hindi ni-re-rebuild ang buong form; nadadagdagan o nababawasan lang ang card,
+ * kaya hindi nawawala ang mga naisulat na.
+ *********************************************************/
+function optionsHTML(list, placeholder) {
+  return '<option value="">' + escapeHTML(placeholder) + '</option>' +
+    list.map(x => '<option>' + escapeHTML(x) + '</option>').join('');
+}
+
+function buildStudentCard(student) {
+  const seq = ++cardSeq;
+  const card = document.createElement('div');
+  card.className = 'student-card';
+  card.dataset.sid = student.studentId;
+
+  const heading = document.createElement('h3');
+  heading.className = 'card-heading';
+  heading.dataset.name = student.name;
+  card.appendChild(heading);
+
+  card.insertAdjacentHTML('beforeend', `
+    <div class="field">
+      <label>Type of Incident <span class="req">*</span></label>
+      <div class="check-group">
+        ${TYPES.map(t => `<label class="check-row"><input type="checkbox" class="f-type" value="${escapeHTML(t)}"><span>${escapeHTML(t)}</span></label>`).join('')}
+      </div>
+      <p class="small">You may select more than one.</p>
+    </div>
+    <div class="grid">
+      <div class="field"><label for="date_${seq}">Date of Incident <span class="req">*</span></label><input type="date" class="f-date" id="date_${seq}" max="${todayLocal()}"></div>
+      <div class="field"><label for="time_${seq}">Time of Incident (optional)</label><input type="time" class="f-time" id="time_${seq}"></div>
+    </div>
+    <div class="field">
+      <label for="location_${seq}">Where did it happen? <span class="req">*</span></label>
+      <select class="f-location" id="location_${seq}">${optionsHTML(LOCATIONS, 'Select location')}</select>
+    </div>
+    <div class="field">
+      <label for="frequency_${seq}">How often has this happened? <span class="req">*</span></label>
+      <select class="f-frequency" id="frequency_${seq}">${optionsHTML(FREQUENCIES, 'Select frequency')}</select>
+    </div>
+    <div class="field">
+      <label for="connection_${seq}">Relationship to the incident <span class="req">*</span></label>
+      <select class="f-connection" id="connection_${seq}">${optionsHTML(CONNECTIONS, 'Select one')}</select>
+    </div>
+    <div class="field"><label for="witness_${seq}">Witnesses (Optional)</label><input class="f-witness" id="witness_${seq}" maxlength="300" placeholder="Names, if known"></div>
+    <div class="field"><label for="details_${seq}">What exactly happened? <span class="req">*</span></label><textarea class="f-details" id="details_${seq}" maxlength="5000" placeholder="Describe the specific incident involving this student..."></textarea></div>
+    <div class="field">
+      <label for="evidence_${seq}">Upload Evidence (Optional)</label>
+      <input type="file" class="f-evidence" id="evidence_${seq}" accept="image/jpeg,image/png,image/webp,application/pdf" multiple>
+      <p class="small">Maximum 3 files. Photos are resized automatically. PDF files must be 5 MB or smaller. JPG, PNG, WEBP or PDF only.</p>
+    </div>
+  `);
+
+  card.querySelector('.f-evidence').addEventListener('change', e => {
+    if (e.target.files.length > MAX_FILES) {
+      alert('You can upload a maximum of ' + MAX_FILES + ' files per student.');
+      e.target.value = '';
+    }
+  });
+  return card;
+}
+
+function renderIndividualDetails() {
+  const container = $('individualDetails');
+
+  [...container.children].forEach(card => {
+    if (!selectedStudents.includes(card.dataset.sid)) card.remove();
+  });
+  selectedStudents.forEach(id => {
+    if (container.querySelector('[data-sid="' + CSS.escape(id) + '"]')) return;
+    const student = classmates.find(s => s.studentId === id);
+    if (student) container.appendChild(buildStudentCard(student));
+  });
+  [...container.children].forEach((card, i) => {
+    const h = card.querySelector('.card-heading');
+    h.textContent = 'Student ' + (i + 1) + ': ' + h.dataset.name;
+  });
+}
+
+/*********************************************************
+ * FILE HANDLING
+ *********************************************************/
+function readAsDataURL(blobOrFile) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read a selected file.'));
+    reader.readAsDataURL(blobOrFile);
+  });
+}
+
+function compressImage(file, maxDim = 1600, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(async blob => {
+        if (!blob) return reject(new Error('Could not process the image ' + file.name + '.'));
+        try {
+          const data = await readAsDataURL(blob);
+          resolve({name: file.name.replace(/\.[^.]*$/, '') + '.jpg', mimeType: 'image/jpeg', data, size: blob.size});
+        } catch (err) { reject(err); }
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not open the image ' + file.name + '.')); };
+    img.src = url;
+  });
+}
+
+async function prepareFile(file) {
+  const type = file.type;
+  if (type === 'application/pdf') {
+    if (file.size > MAX_PDF_BYTES) throw new Error(file.name + ' exceeds the 5 MB limit for PDF files.');
+    return {name: file.name, mimeType: type, data: await readAsDataURL(file), size: file.size};
+  }
+  if (['image/jpeg','image/png','image/webp'].includes(type)) {
+    if (file.size > MAX_IMAGE_ORIGINAL_BYTES) throw new Error(file.name + ' is too large (max 25 MB).');
+    return compressImage(file);
+  }
+  throw new Error('Unsupported evidence file type: ' + file.name);
+}
+
+/*********************************************************
+ * SUBMIT REPORT
+ *********************************************************/
+async function submitIncidentReport() {
+  clearMessage('reportMessage');
+  const btn = $('submitReportBtn');
+  const narrative = $('generalNarrative').value.trim();
+  const urgent = $('urgentAlert').checked;
+
+  if (narrative.length < 5) return message('reportMessage', 'Please describe your concern.');
+  if (selectedStudents.length === 0) return message('reportMessage', 'Select at least one student.');
+
+  setLoading(btn, true, 'Preparing report...');
+  try {
+    const targets = [];
+    let totalBytes = 0;
+
+    for (const studentId of selectedStudents) {
+      const card = $('individualDetails').querySelector('[data-sid="' + CSS.escape(studentId) + '"]');
+      if (!card) throw new Error('Please reselect the students and try again.');
+      const name = card.querySelector('.card-heading').dataset.name;
+
+      const types = [...card.querySelectorAll('.f-type:checked')].map(x => x.value);
+      const date = card.querySelector('.f-date').value;
+      const location = card.querySelector('.f-location').value;
+      const frequency = card.querySelector('.f-frequency').value;
+      const connection = card.querySelector('.f-connection').value;
+      const details = card.querySelector('.f-details').value.trim();
+
+      if (!types.length) throw new Error(name + ': select the type of incident.');
+      if (!date) throw new Error(name + ': enter the date of the incident.');
+      if (date > todayLocal()) throw new Error(name + ': the date cannot be in the future.');
+      if (!location) throw new Error(name + ': select where it happened.');
+      if (!frequency) throw new Error(name + ': select how often it happened.');
+      if (!connection) throw new Error(name + ': select your relationship to the incident.');
+      if (details.length < 5) throw new Error(name + ': describe what exactly happened.');
+
+      const files = [...card.querySelector('.f-evidence').files];
+      if (files.length > MAX_FILES) throw new Error(name + ': maximum of ' + MAX_FILES + ' evidence files.');
+
+      const evidence = [];
+      for (const file of files) {
+        const prepared = await prepareFile(file);
+        totalBytes += prepared.size;
+        if (totalBytes > MAX_TOTAL_BYTES) throw new Error('Total evidence size is too large. Upload fewer or smaller files.');
+        evidence.push({name: prepared.name, mimeType: prepared.mimeType, data: prepared.data});
+      }
+
+      targets.push({
+        targetStudentId: studentId,
+        bullyingTypes: types,
+        incidentDate: date,
+        incidentTime: card.querySelector('.f-time').value,
+        location, frequency,
+        schoolConnection: connection,
+        witnesses: card.querySelector('.f-witness').value.trim(),
+        incidentDetails: details,
+        evidence
+      });
+    }
+
+    setLoading(btn, true, 'Submitting report...');
+    const result = await api('submitReport', {narrative, urgentAlert: urgent, targets}, 150000);
+
+    $('generalNarrative').value = '';
+    $('urgentAlert').checked = false;
+    $('classmateSearch').value = '';
+    selectedStudents = [];
+    renderClassmates();
+    message('reportMessage', (result.message || 'Report submitted.') + ' Reference: ' + result.reportId, true);
+  } catch (error) {
+    message('reportMessage', error.message);
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+/*********************************************************
+ * ADVISER NAVIGATION
+ *********************************************************/
+function showAdminPage(page) {
+  const map = {overview:'adminOverview', reports:'adminReports', registrations:'adminRegistrations', students:'adminStudents'};
+  Object.values(map).forEach(id => $(id).classList.add('hidden'));
+  $(map[page]).classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  if (page === 'students') loadStudents();
+}
+
+/*********************************************************
+ * DASHBOARD
+ *********************************************************/
+async function loadDashboard() {
+  try {
+    dashboardData = await api('adminDashboard');
+    const s = dashboardData.summary;
+    $('totalReports').textContent = s.totalReports;
+    $('urgentReports').textContent = s.urgentReports;
+    $('newReports').textContent = s.newReports;
+    $('pendingCount').textContent = s.pendingRegistrations;
+    renderRanking('mostReported', dashboardData.mostReportedStudents || []);
+    renderRanking('frequentReporters', dashboardData.frequentReporters || []);
+    renderReports();
+  } catch (error) { reportError(error); }
+}
+
+function renderRanking(elementId, data) {
+  const container = $(elementId);
+  container.innerHTML = '';
+  if (!data.length) { container.textContent = 'No records available.'; return; }
+  const max = Math.max(...data.map(x => Number(x.count) || 0), 1);
+  data.forEach((item, index) => {
+    const row = document.createElement('div');
+    const line = document.createElement('div');
+    line.className = 'list-item';
+    const name = document.createElement('span');
+    name.textContent = (index + 1) + '. ' + item.name;
+    const count = document.createElement('strong');
+    count.textContent = item.count;
+    line.append(name, count);
+    const progress = document.createElement('div');
+    progress.className = 'progress';
+    const fill = document.createElement('div');
+    fill.style.width = ((Number(item.count) || 0) / max * 100) + '%';
+    progress.appendChild(fill);
+    row.append(line, progress);
+    container.appendChild(row);
+  });
+}
+
+function renderReports() {
+  if (!dashboardData) return;
+  const search = ($('reportSearch').value || '').toLowerCase();
+  const filter = $('reportFilter').value;
+  const body = $('reportsTable');
+  body.innerHTML = '';
+
+  const reports = (dashboardData.reports || []).filter(r => {
+    const matchesSearch = String(r.reportId).toLowerCase().includes(search) ||
+      String(r.reporterName).toLowerCase().includes(search);
+    const matchesFilter = filter === 'all' ? true : filter === 'urgent' ? r.urgentAlert === true : r.status === filter;
+    return matchesSearch && matchesFilter;
+  });
+
+  if (!reports.length) { body.innerHTML = '<tr><td colspan="7">No reports found.</td></tr>'; return; }
+
+  reports.forEach(r => {
+    const tr = document.createElement('tr');
+    const cells = [
+      escapeHTML(r.reportId), escapeHTML(fmtDate(r.submittedAt)), escapeHTML(r.reporterName),
+      escapeHTML(r.targetCount),
+      r.urgentAlert ? '<span class="badge badge-red">URGENT</span>' : '<span class="badge">Regular</span>',
+      escapeHTML(statusLabel(r.status))
+    ];
+    cells.forEach(html => {
+      const td = document.createElement('td');
+      td.innerHTML = html;
+      tr.appendChild(td);
+    });
+    const action = document.createElement('td');
+    const view = document.createElement('button');
+    view.type = 'button';
+    view.className = 'btn btn-small';
+    view.textContent = 'View';
+    view.addEventListener('click', () => openReport(r.reportId));
+    action.appendChild(view);
+    tr.appendChild(action);
+    body.appendChild(tr);
+  });
+}
+
+/*********************************************************
+ * REGISTRATION APPROVAL
+ *********************************************************/
+async function loadPending() {
+  try {
+    const pending = await api('adminPending');
+    const container = $('pendingList');
+    container.innerHTML = '';
+    if (!pending.length) { container.textContent = 'No pending registrations.'; return; }
+    pending.forEach(student => {
+      const card = document.createElement('div');
+      card.className = 'student-card';
+      const title = document.createElement('h3');
+      title.textContent = student.name;
+      const info = document.createElement('p');
+      info.textContent = 'LRN: ' + student.lrn + ' | ' + student.grade + ' | ' + student.section +
+        (student.submittedAt ? ' | Requested: ' + fmtDate(student.submittedAt) : '');
+      const approve = document.createElement('button');
+      approve.type = 'button';
+      approve.className = 'btn btn-green';
+      approve.textContent = 'Approve';
+      approve.onclick = () => approveStudent(student.lrn);
+      const reject = document.createElement('button');
+      reject.type = 'button';
+      reject.className = 'btn btn-danger';
+      reject.style.marginLeft = '8px';
+      reject.textContent = 'Reject';
+      reject.onclick = () => rejectStudent(student.lrn);
+      card.append(title, info, approve, reject);
+      container.appendChild(card);
+    });
+  } catch (error) { reportError(error); }
+}
+
+async function approveStudent(lrn) {
+  if (!confirm('Approve this student account?')) return;
+  try { await api('adminApprove', {lrn}); await loadPending(); await loadDashboard(); alert('Student approved.'); }
+  catch (error) { reportError(error); }
+}
+async function rejectStudent(lrn) {
+  if (!confirm('Reject this registration?')) return;
+  try { await api('adminReject', {lrn}); await loadPending(); await loadDashboard(); alert('Registration rejected.'); }
+  catch (error) { reportError(error); }
+}
+
+/*********************************************************
+ * STUDENT ACCOUNTS (password reset)
+ *********************************************************/
+async function loadStudents() {
+  try {
+    const list = await api('adminStudents');
+    const body = $('studentsTable');
+    body.innerHTML = '';
+    if (!list.length) { body.innerHTML = '<tr><td colspan="5">No student accounts yet.</td></tr>'; return; }
+    list.forEach(s => {
+      const tr = document.createElement('tr');
+      [s.name, s.lrn, s.status, fmtDate(s.lastLogin) || '—'].forEach(text => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      const action = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-secondary btn-small';
+      btn.textContent = 'Reset Password';
+      btn.onclick = () => resetStudentPassword(s);
+      action.appendChild(btn);
+      tr.appendChild(action);
+      body.appendChild(tr);
+    });
+  } catch (error) { reportError(error); }
+}
+
+async function resetStudentPassword(student) {
+  if (!confirm('Create a new temporary password for ' + student.name + '? Their old password will stop working.')) return;
+  try {
+    const result = await api('adminResetPassword', {lrn: student.lrn});
+    const box = $('resetResult');
+    box.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'temp-box';
+    const text = document.createElement('div');
+    text.textContent = 'Temporary password for ' + student.name + ': ';
+    const code = document.createElement('code');
+    code.textContent = result.temporaryPassword;
+    text.appendChild(code);
+    const note = document.createElement('div');
+    note.className = 'small';
+    note.textContent = 'Give this to the student privately. It is shown only once, and they must change it when they log in.';
+    div.append(text, note);
+    box.appendChild(div);
+    box.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  } catch (error) { reportError(error); }
+}
+
+/*********************************************************
+ * REPORT DETAILS
+ *********************************************************/
+async function openReport(reportId) {
+  try {
+    const result = await api('adminGetReport', {reportId});
+    const r = result.report;
+    const container = $('reportDetailContent');
+    showOnly('reportDetailScreen');
+
+    let html = `
+      <div class="notice">
+        <strong>Report Reference:</strong> ${escapeHTML(r.reportId)}<br>
+        <strong>Submitted:</strong> ${escapeHTML(fmtDate(r.submittedAt))}<br>
+        <strong>Reporter:</strong> ${escapeHTML(r.reporterName)}<br>
+        <strong>Priority:</strong> ${r.urgentAlert ? 'URGENT' : 'Regular'}
+      </div>
+      <h3>General Description</h3><p style="white-space:pre-wrap">${escapeHTML(r.narrative)}</p><hr>
+      <h3>Individual Student Details</h3>
+    `;
+
+    (result.targets || []).forEach((t, index) => {
+      html += `
+        <div class="student-card">
+          <h3>${index + 1}. ${escapeHTML(t.targetName)}</h3>
+          <p><strong>Type:</strong> ${escapeHTML(t.bullyingTypes)}</p>
+          <p><strong>Date:</strong> ${escapeHTML(t.incidentDate)}</p>
+          <p><strong>Time:</strong> ${escapeHTML(t.incidentTime || '—')}</p>
+          <p><strong>Location:</strong> ${escapeHTML(t.location)}</p>
+          <p><strong>Frequency:</strong> ${escapeHTML(t.frequency)}</p>
+          <p><strong>Relationship:</strong> ${escapeHTML(t.schoolConnection)}</p>
+          <p><strong>Witnesses:</strong> ${escapeHTML(t.witnesses || '—')}</p>
+          <p><strong>Details:</strong></p><p style="white-space:pre-wrap">${escapeHTML(t.incidentDetails)}</p>
+          <div id="evidence_${index}"></div>
         </div>
-    </header>
+      `;
+    });
 
-    <!-- Main Container -->
-    <main class="max-w-6xl w-full mx-auto px-4 py-8 flex-grow">
+    html += `
+      <hr><h3>Adviser Actions</h3>
+      <div class="field">
+        <label for="detailStatus">Update Report Status</label>
+        <select id="detailStatus">
+          ${STATUSES.map(s => `<option value="${escapeHTML(s)}" ${r.status === s ? 'selected' : ''}>${escapeHTML(statusLabel(s))}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label for="detailNotes">Private Adviser Notes</label><textarea id="detailNotes" maxlength="10000">${escapeHTML(r.staffNotes)}</textarea></div>
+      <button type="button" class="btn" id="saveReportButton">Save Changes</button>
+    `;
+    container.innerHTML = html;
+    $('saveReportButton').onclick = () => saveReportActions(r.reportId);
 
-        <!-- LOGIN & REGISTRATION VIEW -->
-        <div id="authView" class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white text-center">
-                <h2 id="authTitle" class="text-2xl font-bold">Mag-login sa Portal</h2>
-                <p id="authSubtitle" class="text-blue-100 text-sm mt-1">Ilagay ang LRN para makita ang detalyadong marka</p>
-            </div>
+    (result.targets || []).forEach((t, index) => {
+      const box = $('evidence_' + index);
+      if (!t.evidenceFileIDs || !t.evidenceFileIDs.length) { box.textContent = 'No evidence attached.'; return; }
+      t.evidenceFileIDs.forEach((fileId, n) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-secondary btn-small';
+        btn.style.margin = '5px 5px 5px 0';
+        btn.textContent = 'View Evidence ' + (n + 1);
+        btn.onclick = () => viewEvidence(r.reportId, fileId);
+        box.appendChild(btn);
+      });
+    });
+  } catch (error) { reportError(error); }
+}
 
-            <!-- Tabs for Login / Register -->
-            <div class="flex border-b border-slate-200 bg-slate-50">
-                <button onclick="switchTab('login')" id="tabLoginBtn" class="flex-1 py-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition">Login</button>
-                <button onclick="switchTab('register')" id="tabRegisterBtn" class="flex-1 py-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition">Magparehistro</button>
-            </div>
+function closeReportDetails() {
+  showOnly('adminScreen');
+  showAdminPage('reports');
+  loadDashboard();
+}
 
-            <div class="p-6">
-                <!-- LOGIN FORM -->
-                <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Learner Reference Number (LRN)</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                <i class="fa-solid fa-id-card"></i>
-                            </span>
-                            <input type="text" id="loginLrn" required placeholder="Hal. 123456789012" maxlength="12"
-                                class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-700">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                <i class="fa-solid fa-lock"></i>
-                            </span>
-                            <input type="password" id="loginPass" required placeholder="••••••••"
-                                class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-700">
-                        </div>
-                    </div>
-                    <button type="submit" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md transition flex items-center justify-center space-x-2">
-                        <span>Tingnan ang Detailed Scores</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                </form>
+/*********************************************************
+ * EVIDENCE VIEWER
+ * Binubuksan agad ang window sa mismong click para hindi ma-block ng popup blocker.
+ *********************************************************/
+async function viewEvidence(reportId, fileId) {
+  const win = window.open('', '_blank');
+  if (!win) { alert('Please allow pop-ups to view evidence.'); return; }
+  win.opener = null;
+  win.document.body.textContent = 'Loading evidence...';
+  try {
+    const result = await api('adminGetEvidence', {reportId, fileId}, 90000);
+    const bytes = Uint8Array.from(atob(result.data), c => c.charCodeAt(0));
+    const blob = new Blob([bytes], {type: result.mimeType});
+    win.location.href = URL.createObjectURL(blob);
+  } catch (error) {
+    win.close();
+    reportError(error);
+  }
+}
 
-                <!-- REGISTRATION FORM -->
-                <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4" style="display: none;">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Learner Reference Number (LRN)</label>
-                        <input type="text" id="regLrn" required placeholder="12-Digit LRN" maxlength="12"
-                            class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Buong Pangalan (Full Name)</label>
-                        <input type="text" id="regName" required placeholder="Apelyido, Pangalan M.I."
-                            class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Grade Level</label>
-                            <select id="regGrade" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                                <option value="Grade 9">Grade 9</option>
-                                <option value="Grade 10">Grade 10</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Seksiyon</label>
-                            <input type="text" id="regSection" required placeholder="Hal. Rizal"
-                                class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Pangalan ng Adviser</label>
-                        <input type="text" id="regAdviser" required placeholder="Hal. Sir Bryan Fajardo"
-                            class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                        <input type="password" id="regPass" required placeholder="Gumawa ng password"
-                            class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    <button type="submit" id="regBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow-md transition">
-                        Magparehistro
-                    </button>
-                </form>
+/*********************************************************
+ * SAVE ADVISER ACTIONS
+ *********************************************************/
+async function saveReportActions(reportId) {
+  const btn = $('saveReportButton');
+  setLoading(btn, true, 'Saving...');
+  try {
+    await api('adminUpdateReport', {reportId, status: $('detailStatus').value, notes: $('detailNotes').value});
+    alert('Report updated successfully.');
+    await loadDashboard();
+  } catch (error) { reportError(error); }
+  finally { setLoading(btn, false); }
+}
 
-                <!-- Demo Mode Toggle -->
-                <div class="mt-6 pt-4 border-t border-slate-100 text-center">
-                    <button onclick="enableDemoMode()" class="text-xs text-blue-600 hover:underline font-medium">
-                        <i class="fa-solid fa-flask"></i> Subukan ang Demo Mode (Class Record Sample Data)
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- DASHBOARD VIEW (CLASS RECORD BREAKDOWN) -->
-        <div id="dashboardView" class="hidden space-y-6">
-            <!-- Student Profile Card -->
-            <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <span id="studentGradeSec" class="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Grade 9 - Peras</span>
-                    <h2 id="studentNameDisplay" class="text-2xl font-bold text-slate-900 mt-1">Bagasan, Raidon Magnus Gamboa</h2>
-                    <p class="text-sm text-slate-500">LRN: <span id="studentLrnDisplay" class="font-mono font-medium text-slate-700">123456789012</span></p>
-                </div>
-                <div class="bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 text-right w-full md:w-auto">
-                    <p class="text-xs text-slate-500">Adviser</p>
-                    <p id="studentAdviserDisplay" class="font-semibold text-slate-800">Sir Bryan Fajardo</p>
-                </div>
-            </div>
-
-            <!-- Quarter Selector Tabs -->
-            <div class="flex space-x-2 overflow-x-auto pb-2">
-                <button onclick="selectQuarter(1)" id="q1Btn" class="quarter-tab px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 text-white shadow-sm transition">1st Term / Quarter</button>
-                <button onclick="selectQuarter(2)" id="q2Btn" class="quarter-tab px-4 py-2.5 rounded-xl font-semibold text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">2nd Term / Quarter</button>
-                <button onclick="selectQuarter(3)" id="q3Btn" class="quarter-tab px-4 py-2.5 rounded-xl font-semibold text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">3rd Term / Quarter</button>
-            </div>
-
-            <!-- Detailed Breakdown Cards -->
-            <div id="breakdownContainer" class="space-y-6">
-                <!-- Dynamic Content Rendered Here -->
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        <p>Student Grade Access Portal &bull; DepEd Class Record Score Tracking</p>
-    </footer>
-
-    <!-- JavaScript Application Logic -->
-    <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxaCrGVoRd2LT6Ytwu3o97YU2QgL4v7HbkZrYSR1MwbtFj0MDifqsLi8qZ3KoXcC4EtwQ/exec";
-        let currentStudent = null;
-        let activeQuarter = 1;
-
-        function switchTab(tab) {
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            const tabLoginBtn = document.getElementById('tabLoginBtn');
-            const tabRegisterBtn = document.getElementById('tabRegisterBtn');
-            const authTitle = document.getElementById('authTitle');
-            const authSubtitle = document.getElementById('authSubtitle');
-
-            if (tab === 'login') {
-                loginForm.style.display = 'block';
-                registerForm.style.display = 'none';
-                authTitle.innerText = "Mag-login sa Portal";
-                authSubtitle.innerText = "Ilagay ang LRN para makita ang detalyadong marka";
-                tabLoginBtn.style.color = "#2563eb";
-                tabLoginBtn.style.borderBottom = "2px solid #2563eb";
-                tabRegisterBtn.style.color = "#64748b";
-                tabRegisterBtn.style.borderBottom = "none";
-            } else {
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
-                authTitle.innerText = "Magrehistro sa Portal";
-                authSubtitle.innerText = "Ilagay ang iyong mga detalye upang makapagrehistro";
-                tabRegisterBtn.style.color = "#059669";
-                tabRegisterBtn.style.borderBottom = "2px solid #059669";
-                tabLoginBtn.style.color = "#64748b";
-                tabLoginBtn.style.borderBottom = "none";
-            }
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const lrn = document.getElementById('loginLrn').value.trim();
-            const pass = document.getElementById('loginPass').value.trim();
-
-            try {
-                const res = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: 'login', lrn: lrn, password: pass })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    currentStudent = data.student;
-                    if (!currentStudent.grades) currentStudent.grades = { 1: null, 2: null, 3: null };
-                    showDashboard();
-                } else {
-                    alert(data.message || "Maling LRN o Password.");
-                }
-            } catch (err) {
-                alert("Error connecting to database: " + err.message);
-            }
-        }
-
-        async function handleRegister(e) {
-            e.preventDefault();
-            const newStudent = {
-                lrn: document.getElementById('regLrn').value.trim(),
-                name: document.getElementById('regName').value.trim(),
-                gradeLevel: document.getElementById('regGrade').value,
-                section: document.getElementById('regSection').value.trim(),
-                adviser: document.getElementById('regAdviser').value.trim(),
-                password: document.getElementById('regPass').value.trim(),
-                grades: { 1: null, 2: null, 3: null }
-            };
-
-            try {
-                const res = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: 'register', student: newStudent })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert("Registration successful! Maaari ka nang mag-login.");
-                    switchTab('login');
-                    document.getElementById('loginLrn').value = newStudent.lrn;
-                } else {
-                    alert(data.message || "Registration failed.");
-                }
-            } catch (err) {
-                alert("Error: " + err.message);
-            }
-        }
-
-        async function showDashboard() {
-            document.getElementById('authView').classList.add('hidden');
-            document.getElementById('dashboardView').classList.remove('hidden');
-            document.getElementById('navLogoutBtn').classList.remove('hidden');
-
-            document.getElementById('studentNameDisplay').innerText = currentStudent.name;
-            document.getElementById('studentLrnDisplay').innerText = currentStudent.lrn;
-            document.getElementById('studentGradeSec').innerText = `${currentStudent.gradeLevel} - ${currentStudent.section}`;
-            document.getElementById('studentAdviserDisplay').innerText = currentStudent.adviser;
-
-            await fetchStudentGrades(currentStudent.lrn, activeQuarter);
-        }
-
-        async function fetchStudentGrades(lrn, term) {
-            const container = document.getElementById('breakdownContainer');
-            container.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-sm p-12 text-center text-slate-400 border border-slate-100">
-                    <i class="fa-solid fa-spinner fa-spin text-4xl mb-3 text-blue-600"></i>
-                    <p class="font-medium text-slate-600">Kina-karga ang mga marka mula sa database...</p>
-                </div>`;
-
-            try {
-                const res = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: 'getGrades', lrn: lrn, term: term })
-                });
-                const data = await res.json();
-
-                if (!currentStudent.grades) currentStudent.grades = {};
-                if (!currentStudent.gradeErrors) currentStudent.gradeErrors = {};
-                currentStudent.gradeErrors[term] = null;
-
-                if (data.success && data.scoresData) {
-                    const parsed = parseRowToGrades(data.scoresData, data.hpsData);
-                    currentStudent.grades[term] = parsed;
-                    if (!parsed) {
-                        if (data.hpsData === undefined) {
-                            currentStudent.gradeErrors[term] = "Walang hpsData sa sagot ng server: luma pa ang naka-deploy na Apps Script. I-redeploy ang bagong Code.gs gamit ang Version: New version.";
-                        } else if (data.hpsData === null) {
-                            currentStudent.gradeErrors[term] = "Hindi nahanap ng Apps Script ang HPS row sa worksheet na '" + (data.sheetName || "") + "' (row ng estudyante: " + data.matchedRow + "). Dapat may row na 'MALE' o 'FEMALE' sa Column B na may numerong Total sa Column H.";
-                        } else {
-                            currentStudent.gradeErrors[term] = "Kulang ang bilang ng column sa row (kailangan ang A hanggang AA).";
-                        }
-                    }
-                } else {
-                    currentStudent.grades[term] = null;
-                    currentStudent.gradeErrors[term] = (data.message || "Walang nakuhang marka mula sa server.") + (data.hint ? " " + data.hint : "");
-                }
-            } catch (err) {
-                console.log("Error fetching grades: ", err);
-                if (!currentStudent.grades) currentStudent.grades = {};
-                if (!currentStudent.gradeErrors) currentStudent.gradeErrors = {};
-                currentStudent.grades[term] = null;
-                currentStudent.gradeErrors[term] = "Error sa koneksyon sa database: " + err.message;
-            }
-
-            renderBreakdown();
-        }
-
-        // Column mapping ayon sa aktuwal na class record (A hanggang AA).
-        // Array index ay zero-based: A=0, B=1, C=2, ... AA=26.
-        // PAALALA: ang mga HPS (max) sa ibaba ay para sa class record na
-        // may WW = 15/25/15 (55), PT = 20/50 (70), ST = 25/25/50.
-        // Ang HPS (highest possible score) ay kinukuha na mula mismo sa HPS row
-        // ng sheet (hpsData), kaya tama para sa bawat section at term.
-        function parseRowToGrades(row, hps) {
-            if (!row || !Array.isArray(row) || row.length < 27) return null;
-            if (!hps || !Array.isArray(hps) || hps.length < 27) return null;
-
-            const blankIn = (arr, idx) =>
-                arr[idx] === undefined || arr[idx] === null || String(arr[idx]).trim() === "";
-
-            const numIn = (arr, idx) => {
-                if (blankIn(arr, idx)) return 0;
-                const n = Number(String(arr[idx]).replace(/,/g, "").trim());
-                return Number.isFinite(n) ? n : 0;
-            };
-
-            const getNum = (idx) => numIn(row, idx);
-
-            // null kapag blangko, para hindi magmukhang 0 ang hindi pa naipapasok
-            const getScore = (idx) => (blankIn(row, idx) ? null : numIn(row, idx));
-
-            const getFormatted = (idx) => {
-                if (blankIn(row, idx)) return "0.00";
-                const n = Number(String(row[idx]).replace(/,/g, "").trim());
-                return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-            };
-
-            // Kunin lang ang mga column na may HPS (> 0) sa HPS row
-            const slots = (start, end) => {
-                const out = [];
-                for (let i = start; i <= end; i++) if (numIn(hps, i) > 0) out.push(i);
-                return out;
-            };
-            const sum = (arr) => arr.reduce((a, b) => a + b, 0);
-
-            const wwIdx = slots(2, 6);    // C-G
-            const ptIdx = slots(10, 12);  // K-M
-            const wwMax = wwIdx.map((i) => numIn(hps, i));
-            const ptMax = ptIdx.map((i) => numIn(hps, i));
-
-            const st1Max = numIn(hps, 16) || 25;  // Q
-            const st2Max = numIn(hps, 17) || 25;  // R
-            const teMax  = numIn(hps, 18) || 50;  // S
-
-            return {
-                subject: "Araling Panlipunan",
-                ww: {
-                    max: wwMax,
-                    scores: wwIdx.map(getScore),
-                    totalRaw: getNum(7),                              // H (Total)
-                    totalMax: numIn(hps, 7) || sum(wwMax),
-                    ps: getFormatted(8),                              // I
-                    ws: getFormatted(9),                              // J
-                    weightPct: 20
-                },
-                pt: {
-                    max: ptMax,
-                    scores: ptIdx.map(getScore),
-                    totalRaw: getNum(13),                             // N (Total)
-                    totalMax: numIn(hps, 13) || sum(ptMax),
-                    ps: getFormatted(14),                             // O
-                    ws: getFormatted(15),                             // P
-                    weightPct: 50
-                },
-                st: {
-                    st1: { score: getScore(16), max: st1Max },        // Q
-                    st2: { score: getScore(17), max: st2Max },        // R
-                    te:  { score: getScore(18), max: teMax },         // S
-                    totalScoreSum: getNum(22),                        // W
-                    totalMax: numIn(hps, 22) || (st1Max + st2Max + teMax),
-                    ps: getFormatted(23),                             // X
-                    ws: getFormatted(24),                             // Y
-                    weightPct: 30
-                },
-                initialGrade: getFormatted(25),                       // Z
-                termGrade: getNum(26)                                 // AA
-            };
-        }
-
-        function logout() {
-            currentStudent = null;
-            document.getElementById('dashboardView').classList.add('hidden');
-            document.getElementById('authView').classList.remove('hidden');
-            document.getElementById('navLogoutBtn').classList.add('hidden');
-        }
-
-        async function selectQuarter(q) {
-            activeQuarter = q;
-            document.querySelectorAll('.quarter-tab').forEach((btn, idx) => {
-                if (idx + 1 === q) {
-                    btn.className = "quarter-tab px-4 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 text-white shadow-sm transition";
-                } else {
-                    btn.className = "quarter-tab px-4 py-2.5 rounded-xl font-semibold text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
-                }
-            });
-            await fetchStudentGrades(currentStudent.lrn, activeQuarter);
-        }
-
-        function renderBreakdown() {
-            const container = document.getElementById('breakdownContainer');
-            container.innerHTML = '';
-
-            const termData = (currentStudent && currentStudent.grades && currentStudent.grades[activeQuarter]) ? currentStudent.grades[activeQuarter] : null;
-
-            if (!termData || !termData.ww || !termData.pt || !termData.st) {
-                container.innerHTML = `
-                    <div class="bg-white rounded-2xl shadow-sm p-12 text-center text-slate-400 border border-slate-100">
-                        <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
-                        <p class="font-medium text-slate-600">Wala pang nakatalang marka para sa Term/Quarter na ito.</p>
-                        <p class="text-xs text-slate-400 mt-1">Lalabas dito ang iyong bawat Written Work, Performance Task, at Exam kapag na-encode na ng guro.</p>
-                        ${(currentStudent && currentStudent.gradeErrors && currentStudent.gradeErrors[activeQuarter]) ? `<p class="text-xs text-rose-500 mt-4 max-w-xl mx-auto bg-rose-50 border border-rose-100 rounded-lg p-3 text-left"><i class="fa-solid fa-triangle-exclamation"></i> Detalye ng problema: ${currentStudent.gradeErrors[activeQuarter]}</p>` : ''}
-                    </div>`;
-                return;
-            }
-
-            const ww = termData.ww;
-            const pt = termData.pt;
-            const st = termData.st;
-            const termGrade = termData.termGrade;
-
-            const fmtScore = (sc, max) => (sc !== null && sc !== undefined) ? `${sc} / ${max}` : `Wala pa`;
-
-            let wwHtml = '';
-            ww.scores.forEach((sc, i) => {
-                const max = ww.max[i] || 0;
-                wwHtml += `
-                    <div class="flex justify-between items-center py-2 border-b border-slate-100 text-sm">
-                        <span class="text-slate-600 font-medium">Written Work #${i + 1}</span>
-                        <span class="text-slate-800 font-semibold">${fmtScore(sc, max)}</span>
-                    </div>`;
-            });
-
-            let ptHtml = '';
-            pt.scores.forEach((sc, i) => {
-                const max = pt.max[i] || 0;
-                ptHtml += `
-                    <div class="flex justify-between items-center py-2 border-b border-slate-100 text-sm">
-                        <span class="text-slate-600 font-medium">Performance Task #${i + 1}</span>
-                        <span class="text-slate-800 font-semibold">${fmtScore(sc, max)}</span>
-                    </div>`;
-            });
-
-            const teMissing = (st.te.score === null);
-
-            container.innerHTML = `
-                <div class="bg-gradient-to-r from-blue-900 to-indigo-800 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div>
-                        <span class="bg-blue-700/60 text-blue-200 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">${termData.subject || 'Araling Panlipunan'}</span>
-                        <h3 class="text-xl font-bold mt-2">Kasalukuyang Summary ng Marka</h3>
-                        <p class="text-xs text-blue-200 mt-1">Computed Initial Grade: <span class="font-mono font-bold text-white">${termData.initialGrade}</span></p>
-                        ${teMissing ? `<p class="text-xs text-amber-300 mt-1"><i class="fa-solid fa-circle-info"></i> Hindi pa kasama ang Term Exam sa kasalukuyang marka.</p>` : ''}
-                    </div>
-                    <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl px-8 py-4 text-center">
-                        <p class="text-xs uppercase tracking-wider text-blue-200 font-medium">Transmuted Term Grade</p>
-                        <p class="text-4xl font-extrabold mt-1 ${termGrade >= 75 ? 'text-emerald-300' : 'text-rose-300'}">${termGrade}</p>
-                        <span class="text-xs font-semibold ${termGrade >= 75 ? 'text-emerald-200' : 'text-rose-200'}">${termGrade >= 75 ? 'PASSED' : 'AT-RISK / FAILED'}</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Written Work -->
-                    <div class="bg-white rounded-2xl shadow-md p-5 border border-slate-100 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                    <i class="fa-solid fa-pen-to-square text-blue-600"></i> Written Work (20%)
-                                </h4>
-                                <span class="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded">WS: ${ww.ws}</span>
-                            </div>
-                            <div class="mt-3 space-y-1">${wwHtml}</div>
-                        </div>
-                        <div class="mt-4 pt-3 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs space-y-1">
-                            <div class="flex justify-between"><span class="text-slate-500">Total Raw Score:</span> <span class="font-bold text-slate-800">${ww.totalRaw} / ${ww.totalMax}</span></div>
-                            <div class="flex justify-between"><span class="text-slate-500">Percentage Score (PS):</span> <span class="font-bold text-slate-800">${ww.ps}%</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Performance Task -->
-                    <div class="bg-white rounded-2xl shadow-md p-5 border border-slate-100 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                    <i class="fa-solid fa-list-check text-emerald-600"></i> Performance Task (50%)
-                                </h4>
-                                <span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded">WS: ${pt.ws}</span>
-                            </div>
-                            <div class="mt-3 space-y-1">${ptHtml}</div>
-                        </div>
-                        <div class="mt-4 pt-3 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs space-y-1">
-                            <div class="flex justify-between"><span class="text-slate-500">Total Raw Score:</span> <span class="font-bold text-slate-800">${pt.totalRaw} / ${pt.totalMax}</span></div>
-                            <div class="flex justify-between"><span class="text-slate-500">Percentage Score (PS):</span> <span class="font-bold text-slate-800">${pt.ps}%</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Tests & Exams -->
-                    <div class="bg-white rounded-2xl shadow-md p-5 border border-slate-100 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                    <i class="fa-solid fa-file-signature text-amber-600"></i> Tests & Exams (30%)
-                                </h4>
-                                <span class="text-xs font-bold bg-amber-50 text-amber-700 px-2 py-1 rounded">WS: ${st.ws}</span>
-                            </div>
-                            <div class="mt-3 space-y-2 text-sm">
-                                <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
-                                    <span class="text-slate-600 font-medium">ST1 (30%)</span>
-                                    <span class="font-semibold text-slate-800">${fmtScore(st.st1.score, st.st1.max)}</span>
-                                </div>
-                                <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
-                                    <span class="text-slate-600 font-medium">ST2 (30%)</span>
-                                    <span class="font-semibold text-slate-800">${fmtScore(st.st2.score, st.st2.max)}</span>
-                                </div>
-                                <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
-                                    <span class="text-slate-600 font-medium">Term Exam (40%)</span>
-                                    <span class="font-semibold text-slate-800">${fmtScore(st.te.score, st.te.max)}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-4 pt-3 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs space-y-1">
-                            <div class="flex justify-between"><span class="text-slate-500">Total Score Sum:</span> <span class="font-bold text-slate-800">${st.totalScoreSum} / ${st.totalMax}</span></div>
-                            <div class="flex justify-between"><span class="text-slate-500">Percentage Score (PS):</span> <span class="font-bold text-slate-800">${st.ps}%</span></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-    </script>
+showOnly('authScreen');
+</script>
 </body>
 </html>
